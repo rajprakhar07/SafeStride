@@ -1,4 +1,7 @@
 'use strict';
+require('dotenv').config();   // MUST BE FIRST
+
+const config = require('./config/environment');
 
 /**
  * server.js — SafeStride entry point
@@ -13,8 +16,7 @@
 // Step 1 — Environment validation
 // This MUST be the first require after dotenv.
 // If any required var is missing the process exits here with a clear error.
-require('dotenv').config();
-const config = require('./config/environment');
+
 
 const http                           = require('http');
 const app                            = require('./app');

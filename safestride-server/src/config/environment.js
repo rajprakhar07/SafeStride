@@ -1,5 +1,5 @@
 'use strict';
-
+require('dotenv').config();
 /**
  * environment.js — F-01
  *
@@ -113,10 +113,17 @@ const config = Object.freeze({
   },
 
   firebase: {
-    serviceAccount: env.FIREBASE_SERVICE_ACCOUNT
-      ? JSON.parse(env.FIREBASE_SERVICE_ACCOUNT)
-      : null,
-  },
+  serviceAccount: (() => {
+    try {
+      return env.FIREBASE_SERVICE_ACCOUNT
+        ? JSON.parse(env.FIREBASE_SERVICE_ACCOUNT)
+        : null;
+    } catch (e) {
+      console.error(' Invalid FIREBASE_SERVICE_ACCOUNT JSON in .env');
+      process.exit(1);
+    }
+  })(),
+},
 
   google: {
     mapsApiKey: env.GOOGLE_MAPS_API_KEY,
