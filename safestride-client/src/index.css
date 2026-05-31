@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+/* Leaflet base styles */
+@import "leaflet/dist/leaflet.css";
+
+/* Prevent pull-to-refresh on mobile */
+body {
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
