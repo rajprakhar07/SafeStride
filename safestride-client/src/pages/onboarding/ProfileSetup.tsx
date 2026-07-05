@@ -7,7 +7,7 @@ import { useState, useRef, ChangeEvent, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateProfile, uploadProfilePhoto } from '../../services/api/user.api';
 import { useAuthStore } from '../../store/authStore';
-import Button from '../../components/common/Button';
+import Button from '../../components/common/Button';                                                                                                                                                             
 import Input  from '../../components/common/Input';
 
 export default function ProfileSetup() {
