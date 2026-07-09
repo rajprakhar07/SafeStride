@@ -4,7 +4,7 @@
  */
 
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet,    } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { useAuthStore } from './store/authStore';
@@ -18,6 +18,7 @@ import OTPVerify  from './pages/auth/OTPVerify';
 import ProfileSetup  from './pages/onboarding/ProfileSetup';
 import AddressSetup  from './pages/onboarding/AddressSetup';
 import ContactsSetup from './pages/onboarding/ContactsSetup';
+import TrustedContacts from './pages/contacts/TrustedContacts';
 
 const Placeholder = ({ name }: { name: string }) => (
   <div style={{ padding: '2rem', fontFamily: 'Inter, sans-serif' }}>
@@ -101,7 +102,7 @@ export default function App() {
             <Route path="/journey/start"   element={<Placeholder name="Start Journey" />} />
             <Route path="/journey/active"  element={<Placeholder name="Active Journey" />} />
             <Route path="/journey/history" element={<Placeholder name="Journey History" />} />
-            <Route path="/contacts"        element={<Placeholder name="Trusted Contacts" />} />
+            <Route path="/contacts" element={<TrustedContacts />} />
             <Route path="/community"       element={<Placeholder name="Danger Map" />} />
             <Route path="/settings"        element={<Placeholder name="Settings" />} />
             <Route path="/admin"           element={<Placeholder name="Admin Dashboard" />} />
