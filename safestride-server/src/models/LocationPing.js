@@ -26,17 +26,16 @@ const LocationPingSchema = new Schema(
     },
 
     // GeoJSON point — used for 2dsphere index and spatial queries
-    geoPoint: {
-      type: {
-        type:        String,
-        enum:        ['Point'],
-        default:     'Point',
-      },
-      coordinates: {
-        type:    [Number], // [lng, lat] — GeoJSON order
-        default: undefined,
-      },
+  geoPoint: {
+    type: {
+      type:    String,
+      enum:    ['Point'],
+      default: 'Point',
     },
+    coordinates: {
+      type: [Number],
+    },
+  },
 
     accuracy:     { type: Number },           // GPS accuracy in meters
     speed:        { type: Number },           // m/s — null if unavailable
