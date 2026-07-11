@@ -12,6 +12,10 @@ import AddressSetup  from './pages/onboarding/AddressSetup';
 import ContactsSetup from './pages/onboarding/ContactsSetup';
 import TrustedContacts from './pages/contacts/TrustedContacts';
 import GPSTestPage from './pages/home/GPSTestPage';
+import Home           from './pages/home/Home';
+import StartJourney   from './pages/journey/StartJourney';
+import ActiveJourney  from './pages/journey/ActiveJourney';
+import JourneyHistory from './pages/journey/JourneyHistory';
 
 const Placeholder = ({ name }: { name: string }) => (
   <div style={{ padding: '2rem', fontFamily: 'Inter, sans-serif' }}>
@@ -67,15 +71,16 @@ export default function App() {
           <Route path="/login"      element={<PhoneEntry />} />
           <Route path="/verify-otp" element={<OTPVerify />} />
           <Route element={<ProtectedRoute />}>
-            <Route path="/"                    element={<Placeholder name="Home" />} />
+          <Route path="/"                element={<Home />} />
             <Route path="/onboarding/profile"  element={<ProfileSetup />} />
             <Route path="/onboarding/address"  element={<AddressSetup />} />
             <Route path="/onboarding/contacts" element={<ContactsSetup />} />
             <Route path="/contacts"            element={<TrustedContacts />} />
             <Route path="/gps-test"            element={<GPSTestPage />} />
-            <Route path="/journey/start"       element={<Placeholder name="Start Journey" />} />
-            <Route path="/journey/active"      element={<Placeholder name="Active Journey" />} />
-            <Route path="/journey/history"     element={<Placeholder name="Journey History" />} />
+            <Route path="/journey/start"   element={<StartJourney />} />
+            <Route path="/journey/active"  element={<ActiveJourney />} />
+            <Route path="/journey/history" element={<JourneyHistory />} />
+         
             <Route path="/community"           element={<Placeholder name="Danger Map" />} />
             <Route path="/settings"            element={<Placeholder name="Settings" />} />
             <Route path="/admin"               element={<Placeholder name="Admin Dashboard" />} />
