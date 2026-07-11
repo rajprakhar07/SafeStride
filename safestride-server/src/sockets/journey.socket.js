@@ -1,31 +1,16 @@
 'use strict';
 
 /**
- * journey.socket.js — F-11
- *
- * Socket.io event handlers for the /journey namespace.
- *
- * Client → Server events:
- *   journey:join        { journeyId }  — join a journey room
- *   location:ping       { lat, lng, accuracy, speed, heading, batteryLevel, timestamp }
- *   journey:end         { journeyId }
- *
- * Server → Client events:
- *   journey:joined      { journeyId, room }
- *   location:update     { lat, lng, accuracy, speed, timestamp, eta, remainingMeters }
- *   journey:ended       { journeyId, status }
- *   error               { message }
+ * journey.socket.js — updated in F-13
+ * Adds deviation detection on every location:ping event.
  */
 
-const Journey        = require('../models/Journey');
-const journeyService = require('../services/journey.service');
-const etaService     = require('../services/eta.service');
+const Journey           = require('../models/Journey');
+const journeyService    = require('../services/journey.service');
+const etaService        = require('../services/eta.service');
+const deviationService  = require('../services/deviation.service');
 const { emitToPortalRoom } = require('./index');
 
-/**
- * Register journey socket event handlers on the /journey namespace.
- * @param {import('socket.io').Namespace} journeyNS
- */
 module.exports = function registerJourneySocket(journeyNS) {
   journeyNS.on('connection', (socket) => {
     const userId = socket.userId;
@@ -34,20 +19,10 @@ module.exports = function registerJourneySocket(journeyNS) {
     // ── journey:join ───────────────────────────────────────────────────────────
     socket.on('journey:join', async ({ journeyId } = {}) => {
       try {
-        if (!journeyId) {
-          return socket.emit('error', { message: 'journeyId is required' });
-        }
+        if (!journeyId) return socket.emit('error', { message: 'journeyId is required' });
 
-        // Verify journey belongs to this user
-        const journey = await Journey.findOne({
-          _id:    journeyId,
-          userId: userId,
-          status: 'active',
-        }).lean();
-
-        if (!journey) {
-          return socket.emit('error', { message: 'Active journey not found' });
-        }
+        const journey = await Journey.findOne({ _id: journeyId, userId, status: 'active' }).lean();
+        if (!journey) return socket.emit('error', { message: 'Active journey not found' });
 
         const room = `journey:${journeyId}`;
         socket.join(room);
@@ -71,26 +46,16 @@ module.exports = function registerJourneySocket(journeyNS) {
     socket.on('location:ping', async (pingData = {}) => {
       try {
         const journeyId = socket.currentJourneyId;
-        if (!journeyId) {
-          return socket.emit('error', { message: 'Join a journey room first' });
-        }
+        if (!journeyId) return socket.emit('error', { message: 'Join a journey room first' });
 
         const { lat, lng, accuracy, speed, heading, batteryLevel, timestamp } = pingData;
-
         if (lat === undefined || lng === undefined) {
           return socket.emit('error', { message: 'lat and lng are required' });
         }
 
-        // 1. Get journey for ETA recalculation
-        const journey = await Journey.findOne({
-          _id:    journeyId,
-          userId: userId,
-          status: 'active',
-        }).lean();
-
-        if (!journey) {
-          return socket.emit('error', { message: 'Journey no longer active' });
-        }
+        // 1. Fetch journey for ETA + deviation check
+        const journey = await Journey.findOne({ _id: journeyId, userId, status: 'active' }).lean();
+        if (!journey) return socket.emit('error', { message: 'Journey no longer active' });
 
         // 2. Store ping in Redis
         await journeyService.storePing(journeyId, userId, {
@@ -105,36 +70,40 @@ module.exports = function registerJourneySocket(journeyNS) {
           currentSpeed:    speed || null,
         });
 
+        // 4. ── DEVIATION DETECTION (F-13) ──────────────────────────────────────
+        const { isDeviation, deviationMeters } = await deviationService.checkDeviation({
+          journeyId,
+          userId,
+          location:        { lat, lng },
+          encodedPolyline: journey.plannedRoute?.polyline || null,
+        });
+
         const updatePayload = {
-          lat,
-          lng,
-          accuracy:        accuracy || null,
-          speed:           speed    || null,
+          lat, lng,
+          accuracy:        accuracy  || null,
+          speed:           speed     || null,
           timestamp:       timestamp || Date.now(),
           eta:             etaDate,
           remainingMeters,
           remainingMinutes,
+          deviationAlert:  isDeviation,
+          deviationMeters: deviationMeters || null,
         };
 
-        // 4. Broadcast to all sockets in the journey room (including this one)
+        // 5. Broadcast to journey room + portal room
         journeyNS.to(`journey:${journeyId}`).emit('location:update', updatePayload);
-
-        // 5. Also broadcast to portal room (trusted contacts watching)
         emitToPortalRoom(journeyId, 'location:update', updatePayload);
 
         // 6. Check if arrived (within 50m)
         if (remainingMeters <= 50) {
           await Journey.findByIdAndUpdate(journeyId, {
-            status:        'completed',
-            actualArrival: new Date(),
+            status: 'completed', actualArrival: new Date(),
           });
           await journeyService.flushPingsToMongoDB(journeyId);
+          await deviationService.resetDeviationState(journeyId);
 
-          journeyNS.to(`journey:${journeyId}`).emit('journey:ended', {
-            journeyId,
-            status:  'completed',
-            message: 'You have arrived at your destination!',
-          });
+          const endPayload = { journeyId, status: 'completed', message: 'You have arrived at your destination!' };
+          journeyNS.to(`journey:${journeyId}`).emit('journey:ended', endPayload);
           emitToPortalRoom(journeyId, 'journey:ended', { journeyId, status: 'completed' });
         }
       } catch (err) {
@@ -152,16 +121,15 @@ module.exports = function registerJourneySocket(journeyNS) {
         const journey = await Journey.findOne({ _id: jId, userId, status: 'active' });
         if (!journey) return socket.emit('error', { message: 'Active journey not found' });
 
-        journey.status        = 'completed';
+        journey.status = 'completed';
         journey.actualArrival = new Date();
         await journey.save();
         await journeyService.flushPingsToMongoDB(jId);
+        await deviationService.resetDeviationState(jId);
 
-        journeyNS.to(`journey:${jId}`).emit('journey:ended', {
-          journeyId: jId,
-          status:    'completed',
-        });
-        emitToPortalRoom(jId, 'journey:ended', { journeyId: jId, status: 'completed' });
+        const endPayload = { journeyId: jId, status: 'completed' };
+        journeyNS.to(`journey:${jId}`).emit('journey:ended', endPayload);
+        emitToPortalRoom(jId, 'journey:ended', endPayload);
 
         socket.leave(`journey:${jId}`);
         socket.currentJourneyId = null;
@@ -175,10 +143,8 @@ module.exports = function registerJourneySocket(journeyNS) {
     // ── disconnect ────────────────────────────────────────────────────────────
     socket.on('disconnect', (reason) => {
       console.log(`🔌 Socket disconnected — user: ${userId} | reason: ${reason}`);
-      // Journey continues running — dead man's switch handles prolonged disconnection
     });
 
-    // ── error ─────────────────────────────────────────────────────────────────
     socket.on('error', (err) => {
       console.error(`Socket error for user ${userId}:`, err.message);
     });
