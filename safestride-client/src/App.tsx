@@ -16,6 +16,7 @@ import Home           from './pages/home/Home';
 import StartJourney   from './pages/journey/StartJourney';
 import ActiveJourney  from './pages/journey/ActiveJourney';
 import JourneyHistory from './pages/journey/JourneyHistory';
+import ContactPortal from './pages/portal/ContactPortal';
 
 const Placeholder = ({ name }: { name: string }) => (
   <div style={{ padding: '2rem', fontFamily: 'Inter, sans-serif' }}>
@@ -85,7 +86,8 @@ export default function App() {
             <Route path="/settings"            element={<Placeholder name="Settings" />} />
             <Route path="/admin"               element={<Placeholder name="Admin Dashboard" />} />
           </Route>
-          <Route path="/portal/:token" element={<Placeholder name="Contact Portal" />} />
+          
+          <Route path="/portal/:token" element={<ContactPortal />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
