@@ -1,22 +1,23 @@
 'use strict';
 
 /**
- * journey.controller.js — F-10
- *
- * POST /journeys/start       — start a new journey
- * POST /journeys/:id/ping    — send location ping
- * POST /journeys/:id/end     — end journey
- * GET  /journeys/active      — get active journey
- * GET  /journeys/history     — journey history (paginated)
- * GET  /journeys/:id         — single journey detail
+ * journey.controller.js — updated in F-19
+ * Schedules delay alerts and dead man's switch on journey start.
+ * Cancels them on journey end.
  */
 
 const Journey        = require('../models/Journey');
-const LocationPing   = require('../models/LocationPing');
 const R              = require('../utils/response.utils');
 const journeyService = require('../services/journey.service');
 const etaService     = require('../services/eta.service');
-const { decodePolyline } = require('../utils/geo.utils');
+const notificationService = require('../services/notification.service');
+const {
+  scheduleDelayAlert,
+  cancelDelayAlert,
+  scheduleDeadManSwitch,
+  cancelDeadManSwitch,
+  resetDeadManSwitch,
+} = require('../jobs/queue');
 
 // ─── Start Journey ────────────────────────────────────────────────────────────
 async function startJourney(req, res, next) {
@@ -34,53 +35,48 @@ async function startJourney(req, res, next) {
     // 1. Enforce only 1 active journey at a time
     const existing = await Journey.findOne({ userId, status: 'active' });
     if (existing) {
-      return R.conflict(
-        res,
-        'You already have an active journey. End it before starting a new one.',
-        'JOURNEY_ALREADY_ACTIVE'
-      );
+      return R.conflict(res, 'You already have an active journey. End it before starting a new one.', 'JOURNEY_ALREADY_ACTIVE');
     }
 
-    // 2. Fetch route from Google Directions API (or straight-line fallback)
-    const { polyline, distanceMeters } = await journeyService.fetchRoute(
-      currentLocation,
-      destination,
-      transportMode
-    );
+    // 2. Fetch route
+    const { polyline, distanceMeters } = await journeyService.fetchRoute(currentLocation, destination, transportMode);
 
-    // 3. Calculate initial ETA
+    // 3. Calculate ETA
     const { etaDate } = etaService.calculateETA({
-      currentLocation,
-      destination,
-      transportMode,
-      currentSpeed: null,
+      currentLocation, destination, transportMode, currentSpeed: null,
     });
 
-    // Use user-provided duration as backup if ETA calc seems off
-    const estimatedArrival = etaDate;
-
-    // 4. Create journey document
+    // 4. Create journey
     const journey = await Journey.create({
       userId,
       status:  'active',
-      startLocation: {
-        coordinates:      currentLocation,
-        formattedAddress: null,
-        timestamp:        new Date(),
-      },
-      plannedDestination: {
-        coordinates:      destination,
-        formattedAddress: destination.formattedAddress || null,
-      },
+      startLocation: { coordinates: currentLocation, formattedAddress: null, timestamp: new Date() },
+      plannedDestination: { coordinates: destination, formattedAddress: destination.formattedAddress || null },
       plannedDurationMinutes,
-      estimatedArrival,
-      initiatedBy:    initiatedBy || 'manual',
-      voiceTranscript: voiceTranscript || null,
-      transportMode:  transportMode || 'walking',
-      plannedRoute: polyline
-        ? { polyline, distanceMeters, riskScore: null, riskLevel: null }
-        : null,
+      estimatedArrival:  etaDate,
+      initiatedBy:       initiatedBy || 'manual',
+      voiceTranscript:   voiceTranscript || null,
+      transportMode:     transportMode || 'walking',
+      plannedRoute:      polyline ? { polyline, distanceMeters, riskScore: null, riskLevel: null } : null,
     });
+
+    const journeyId = journey._id.toString();
+
+    // 5. Schedule delay alert (fires 10 min after ETA)
+    await scheduleDelayAlert(journeyId, userId, etaDate, 10).catch((err) =>
+      console.warn('Failed to schedule delay alert:', err.message)
+    );
+
+    // 6. Schedule dead man's switch (fires if no ping for 5 min)
+    await scheduleDeadManSwitch(journeyId, userId, 5).catch((err) =>
+      console.warn('Failed to schedule DMS:', err.message)
+    );
+
+    // 7. Notify contacts — journey started
+    notificationService.notifyJourneyStart(
+      userId, journeyId,
+      destination.formattedAddress || 'their destination'
+    ).catch(() => {});
 
     return R.created(res, {
       journey: {
@@ -92,6 +88,7 @@ async function startJourney(req, res, next) {
         startLocation:     journey.startLocation,
         plannedDestination: journey.plannedDestination,
         hasRoute:          !!polyline,
+        plannedRoute:      polyline ? { polyline } : null,
       },
     }, 'Journey started successfully');
   } catch (err) {
@@ -105,16 +102,12 @@ async function pingLocation(req, res, next) {
     const { id: journeyId } = req.params;
     const userId = req.userId;
 
-    // Verify journey belongs to user and is active
     const journey = await Journey.findOne({ _id: journeyId, userId, status: 'active' }).lean();
     if (!journey) return R.notFound(res, 'Active journey not found');
 
     const pingData = req.body;
-
-    // Store ping in Redis (batch flush to MongoDB every 60s)
     await journeyService.storePing(journeyId, userId, pingData);
 
-    // Recalculate ETA
     const { etaDate, remainingMeters, remainingMinutes } = etaService.calculateETA({
       currentLocation: { lat: pingData.lat, lng: pingData.lng },
       destination:     journey.plannedDestination.coordinates,
@@ -122,28 +115,19 @@ async function pingLocation(req, res, next) {
       currentSpeed:    pingData.speed || null,
     });
 
-    // Check if destination reached (within 50 meters)
+    // Reset dead man's switch on every ping
+    await resetDeadManSwitch(journeyId, userId).catch(() => {});
+
     if (remainingMeters <= 50) {
-      await Journey.findByIdAndUpdate(journeyId, {
-        status:       'completed',
-        actualArrival: new Date(),
-        endLocation:  {
-          coordinates:      { lat: pingData.lat, lng: pingData.lng },
-          formattedAddress: null,
-          timestamp:        new Date(),
-        },
-      });
+      await Journey.findByIdAndUpdate(journeyId, { status: 'completed', actualArrival: new Date(), endLocation: { coordinates: { lat: pingData.lat, lng: pingData.lng }, formattedAddress: null, timestamp: new Date() } });
       await journeyService.flushPingsToMongoDB(journeyId);
+      await cancelDelayAlert(journeyId);
+      await cancelDeadManSwitch(journeyId);
+      notificationService.notifyJourneyEnd(userId, journeyId).catch(() => {});
       return R.ok(res, { arrived: true, message: 'You have arrived at your destination!' });
     }
 
-    return R.ok(res, {
-      journeyId,
-      eta:             etaDate,
-      remainingMeters,
-      remainingMinutes,
-      pingStored:      true,
-    });
+    return R.ok(res, { journeyId, eta: etaDate, remainingMeters, remainingMinutes, pingStored: true });
   } catch (err) {
     next(err);
   }
@@ -160,22 +144,17 @@ async function endJourney(req, res, next) {
 
     journey.status        = 'completed';
     journey.actualArrival = new Date();
-    journey.endLocation   = {
-      coordinates:      null,
-      formattedAddress: null,
-      timestamp:        new Date(),
-    };
     await journey.save();
-
-    // Flush remaining pings from Redis to MongoDB
     const flushed = await journeyService.flushPingsToMongoDB(journeyId);
 
-    return R.ok(res, {
-      journeyId,
-      status:        'completed',
-      pingsFlushed:  flushed,
-      duration:      Math.round((Date.now() - new Date(journey.createdAt).getTime()) / 60000),
-    }, 'Journey ended successfully');
+    // Cancel scheduled jobs
+    await cancelDelayAlert(journeyId);
+    await cancelDeadManSwitch(journeyId);
+
+    // Notify contacts — arrived safely
+    notificationService.notifyJourneyEnd(userId, journeyId).catch(() => {});
+
+    return R.ok(res, { journeyId, status: 'completed', pingsFlushed: flushed, duration: Math.round((Date.now() - new Date(journey.createdAt).getTime()) / 60000) }, 'Journey ended successfully');
   } catch (err) {
     next(err);
   }
@@ -187,9 +166,7 @@ async function getActiveJourney(req, res, next) {
     const journey = await Journey.findOne({ userId: req.userId, status: 'active' }).lean();
     if (!journey) return R.notFound(res, 'No active journey found');
     return R.ok(res, { journey });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 }
 
 // ─── Journey History ──────────────────────────────────────────────────────────
@@ -200,34 +177,21 @@ async function getJourneyHistory(req, res, next) {
     const skip  = (page - 1) * limit;
 
     const [journeys, total] = await Promise.all([
-      Journey.find(
-        { userId: req.userId, status: { $ne: 'active' } },
-        { plannedRoute: 0 } // exclude heavy polyline data from list
-      ).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Journey.find({ userId: req.userId, status: { $ne: 'active' } }, { plannedRoute: 0 }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Journey.countDocuments({ userId: req.userId, status: { $ne: 'active' } }),
     ]);
 
-    return R.ok(res, {
-      journeys,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-    });
-  } catch (err) {
-    next(err);
-  }
+    return R.ok(res, { journeys, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
+  } catch (err) { next(err); }
 }
 
 // ─── Single Journey ───────────────────────────────────────────────────────────
 async function getJourney(req, res, next) {
   try {
-    const journey = await Journey.findOne({
-      _id:    req.params.id,
-      userId: req.userId,
-    }).lean();
+    const journey = await Journey.findOne({ _id: req.params.id, userId: req.userId }).lean();
     if (!journey) return R.notFound(res, 'Journey not found');
     return R.ok(res, { journey });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 }
 
 module.exports = { startJourney, pingLocation, endJourney, getActiveJourney, getJourneyHistory, getJourney };
