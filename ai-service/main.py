@@ -1,6 +1,6 @@
 """
-SafeStride AI Microservice — FastAPI
-Provides: route risk scoring + anomaly detection during journeys
+SafeStride AI Microservice — F-22
+FastAPI service for route risk scoring and journey anomaly detection.
 
 Run: uvicorn main:app --reload --port 8000
 """
@@ -26,11 +26,17 @@ app.add_middleware(
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "safestride-ai", "version": "1.0.0"}
+    return {
+        "status": "ok",
+        "service": "safestride-ai",
+        "version": "1.0.0",
+        "model_loaded": True,
+    }
 
 
-# Routes wired in F-22
-# from routes.risk import router as risk_router
-# from routes.anomaly import router as anomaly_router
-# app.include_router(risk_router, prefix="/risk", tags=["risk"])
-# app.include_router(anomaly_router, prefix="/anomaly", tags=["anomaly"])
+# Register routes
+from routes.risk    import router as risk_router
+from routes.anomaly import router as anomaly_router
+
+app.include_router(risk_router,    prefix="/risk",    tags=["risk"])
+app.include_router(anomaly_router, prefix="/anomaly", tags=["anomaly"])
