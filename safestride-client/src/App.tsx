@@ -18,6 +18,8 @@ import ActiveJourney  from './pages/journey/ActiveJourney';
 import JourneyHistory from './pages/journey/JourneyHistory';
 import ContactPortal from './pages/portal/ContactPortal';
 import RoutePlanner from './pages/route/RoutePlanner';
+import DangerMap from './pages/community/DangerMap';
+
 const Placeholder = ({ name }: { name: string }) => (
   <div style={{ padding: '2rem', fontFamily: 'Inter, sans-serif' }}>
     <h2 style={{ color: '#E91E8C' }}>SafeStride — {name}</h2>
@@ -82,8 +84,8 @@ export default function App() {
             <Route path="/journey/active"  element={<ActiveJourney />} />
             <Route path="/journey/history" element={<JourneyHistory />} />
             <Route path="/route-planner"     element={<RoutePlanner />} />
-
-            <Route path="/community"           element={<Placeholder name="Danger Map" />} />
+            <Route path="/community" element={<DangerMap />} />
+           
             <Route path="/settings"            element={<Placeholder name="Settings" />} />
             <Route path="/admin"               element={<Placeholder name="Admin Dashboard" />} />
           </Route>

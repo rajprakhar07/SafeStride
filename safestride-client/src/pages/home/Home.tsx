@@ -1,13 +1,9 @@
-/**
- * Home.tsx — F-12
- * Main dashboard — Start Journey button + recent journey history.
- */
-
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore }    from '../../store/authStore';
 import { useJourneyStore } from '../../store/journeyStore';
 import { getActiveJourney, getJourneyHistory, type JourneyHistoryItem } from '../../services/api/journey.api';
+import VoiceButton from '../../components/common/VoiceButton';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -21,16 +17,13 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing active journey on load
     (async () => {
       try {
         const active = await getActiveJourney();
-        if (active) {
-          setActiveJourney(active);
-        }
+        if (active) setActiveJourney(active);
         const history = await getJourneyHistory();
         setRecentJourneys(history.slice(0, 3));
-      } catch { /* ignore */ }
+      } catch { }
       finally { setLoading(false); }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -45,7 +38,6 @@ export default function Home() {
 
   return (
     <div style={styles.container}>
-      {/* Header */}
       <div style={styles.header}>
         <div>
           <p style={styles.greeting}>{greeting()},</p>
@@ -54,7 +46,6 @@ export default function Home() {
         <button style={styles.menuBtn} onClick={() => navigate('/contacts')}>👥</button>
       </div>
 
-      {/* Active journey banner */}
       {activeJourney && (
         <div style={styles.activeBanner} onClick={() => navigate('/journey/active')}>
           <div style={styles.activeDot} />
@@ -66,28 +57,24 @@ export default function Home() {
         </div>
       )}
 
-      {/* Main CTA */}
       <div style={styles.ctaCard}>
         <div style={styles.ctaIcon}>🛡️</div>
         <h2 style={styles.ctaTitle}>Start a Journey</h2>
         <p style={styles.ctaText}>
           Your guardian will silently monitor your route and alert your contacts if needed.
         </p>
-        <button
-          style={styles.ctaBtn}
-          onClick={() => navigate('/journey/start')}
-        >
+        <button style={styles.ctaBtn} onClick={() => navigate('/journey/start')}>
           Start Guardian Mode →
         </button>
+        <VoiceButton />
       </div>
 
-      {/* Quick actions */}
       <div style={styles.quickActions}>
         {[
-          { icon: '👥', label: 'Contacts',  path: '/contacts'        },
-          { icon: '📍', label: 'Danger Map', path: '/community'       },
-          { icon: '🕐', label: 'History',   path: '/journey/history' },
-          { icon: '⚙️', label: 'Settings',  path: '/settings'        },
+          { icon: '👥', label: 'Contacts',   path: '/contacts'        },
+          { icon: '📍', label: 'Danger Map',  path: '/community'       },
+          { icon: '🕐', label: 'History',     path: '/journey/history' },
+          { icon: '⚙️', label: 'Settings',   path: '/settings'        },
         ].map((a) => (
           <button key={a.path} style={styles.quickBtn} onClick={() => navigate(a.path)}>
             <span style={styles.quickIcon}>{a.icon}</span>
@@ -96,7 +83,6 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Recent journeys */}
       {!loading && recentJourneys.length > 0 && (
         <div style={styles.recentSection}>
           <div style={styles.recentHeader}>
@@ -105,16 +91,10 @@ export default function Home() {
           </div>
           {recentJourneys.map((j) => (
             <div key={j._id} style={styles.recentItem}>
-              <span style={styles.recentIcon}>
-                {j.status === 'completed' ? '✅' : '⚠️'}
-              </span>
+              <span style={styles.recentIcon}>{j.status === 'completed' ? '✅' : '⚠️'}</span>
               <div style={styles.recentInfo}>
-                <div style={styles.recentDest}>
-                  {j.plannedDestination.formattedAddress || 'Journey'}
-                </div>
-                <div style={styles.recentTime}>
-                  {new Date(j.createdAt).toLocaleDateString()}
-                </div>
+                <div style={styles.recentDest}>{j.plannedDestination.formattedAddress || 'Journey'}</div>
+                <div style={styles.recentTime}>{new Date(j.createdAt).toLocaleDateString()}</div>
               </div>
             </div>
           ))}
@@ -131,7 +111,7 @@ const styles: Record<string, React.CSSProperties> = {
   name:         { fontSize: '1.5rem', fontWeight: 700, color: '#1a1a1a', margin: 0, letterSpacing: '-0.02em' },
   menuBtn:      { background: '#fff', border: 'none', borderRadius: '12px', width: '40px', height: '40px', fontSize: '1.2rem', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' },
   activeBanner: { background: '#E91E8C', borderRadius: '14px', padding: '0.85rem 1.1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' },
-  activeDot:    { width: '10px', height: '10px', borderRadius: '50%', background: '#fff', flexShrink: 0, animation: 'pulse 1.5s infinite' },
+  activeDot:    { width: '10px', height: '10px', borderRadius: '50%', background: '#fff', flexShrink: 0 },
   activeTitle:  { color: '#fff', fontWeight: 600, fontSize: '0.9rem' },
   activeSub:    { color: 'rgba(255,255,255,0.8)', fontSize: '0.8rem' },
   activeArrow:  { color: '#fff', fontSize: '1.5rem', marginLeft: 'auto' },
