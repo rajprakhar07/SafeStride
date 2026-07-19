@@ -1,9 +1,16 @@
+/**
+ * Home.tsx — updated in F-29
+ * Adds fake call button and FakeCallScreen overlay.
+ */
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore }    from '../../store/authStore';
 import { useJourneyStore } from '../../store/journeyStore';
 import { getActiveJourney, getJourneyHistory, type JourneyHistoryItem } from '../../services/api/journey.api';
 import VoiceButton from '../../components/common/VoiceButton';
+import FakeCallScreen from '../../components/common/FakeCallScreen';
+import { useFakeCall } from '../../hooks/useFakeCall';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -12,6 +19,7 @@ export default function Home() {
     setActiveJourney: s.setActiveJourney,
     activeJourney:    s.activeJourney,
   }));
+  const { isCallActive, isAnswered, callerName, startFakeCall, answerCall, endCall } = useFakeCall();
 
   const [recentJourneys, setRecentJourneys] = useState<JourneyHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +46,16 @@ export default function Home() {
 
   return (
     <div style={styles.container}>
+      {/* Fake call overlay */}
+      {isCallActive && (
+        <FakeCallScreen
+          callerName={callerName}
+          isAnswered={isAnswered}
+          onAnswer={answerCall}
+          onEnd={endCall}
+        />
+      )}
+
       <div style={styles.header}>
         <div>
           <p style={styles.greeting}>{greeting()},</p>
@@ -60,21 +78,20 @@ export default function Home() {
       <div style={styles.ctaCard}>
         <div style={styles.ctaIcon}>🛡️</div>
         <h2 style={styles.ctaTitle}>Start a Journey</h2>
-        <p style={styles.ctaText}>
-          Your guardian will silently monitor your route and alert your contacts if needed.
-        </p>
+        <p style={styles.ctaText}>Your guardian will silently monitor your route and alert your contacts if needed.</p>
         <button style={styles.ctaBtn} onClick={() => navigate('/journey/start')}>
           Start Guardian Mode →
         </button>
         <VoiceButton />
       </div>
 
+      {/* Quick actions — includes Fake Call */}
       <div style={styles.quickActions}>
         {[
           { icon: '👥', label: 'Contacts',   path: '/contacts'        },
           { icon: '📍', label: 'Danger Map',  path: '/community'       },
           { icon: '🕐', label: 'History',     path: '/journey/history' },
-          { icon: '⚙️', label: 'Settings',   path: '/settings'        },
+          { icon: '🔒', label: 'Route Check', path: '/route-planner'   },
         ].map((a) => (
           <button key={a.path} style={styles.quickBtn} onClick={() => navigate(a.path)}>
             <span style={styles.quickIcon}>{a.icon}</span>
@@ -82,6 +99,11 @@ export default function Home() {
           </button>
         ))}
       </div>
+
+      {/* Fake call button */}
+      <button style={styles.fakeCallBtn} onClick={startFakeCall}>
+        📞 Start Fake Call
+      </button>
 
       {!loading && recentJourneys.length > 0 && (
         <div style={styles.recentSection}>
@@ -124,6 +146,7 @@ const styles: Record<string, React.CSSProperties> = {
   quickBtn:     { background: '#fff', border: 'none', borderRadius: '14px', padding: '0.85rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
   quickIcon:    { fontSize: '1.3rem' },
   quickLabel:   { fontSize: '0.72rem', color: '#555', fontWeight: 500 },
+  fakeCallBtn:  { background: '#fff', border: '1.5px solid #e0e0e0', borderRadius: '14px', padding: '0.85rem', fontSize: '0.95rem', fontWeight: 600, color: '#333', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
   recentSection:{ background: '#fff', borderRadius: '16px', padding: '1rem 1.25rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
   recentHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' },
   recentTitle:  { fontSize: '0.95rem', fontWeight: 600, color: '#1a1a1a' },
