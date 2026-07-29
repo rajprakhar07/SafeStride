@@ -1,6 +1,5 @@
 /**
- * SafeMap.tsx — updated in F-14
- * Adds deviation spot marker (orange warning pin).
+ * SafeMap.tsx — updated with News Alerts
  */
 
 import { useEffect, useRef } from 'react';
@@ -16,6 +15,12 @@ import type { Coordinates } from '../../store/journeyStore';
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({ iconUrl: markerIcon, iconRetinaUrl: markerIcon2x, shadowUrl: markerShadow });
 
+export interface NewsMarkerData {
+  title:    string;
+  content:  string;
+  location: Coordinates;
+}
+
 interface SafeMapProps {
   center:          Coordinates;
   zoom?:           number;
@@ -23,6 +28,7 @@ interface SafeMapProps {
   destination?:    Coordinates | null;
   polylinePoints?: Coordinates[];
   deviationSpot?:  Coordinates | null;
+  newsAlerts?:     NewsMarkerData[]; // New prop for news alerts
   style?:          React.CSSProperties;
 }
 
@@ -80,6 +86,30 @@ function DeviationMarker({ position }: { position: Coordinates }) {
   return null;
 }
 
+/**
+ * NewsMarker: Displays a news-based danger alert on the map
+ */
+function NewsMarker({ data }: { data: NewsMarkerData }) {
+  const map = useMap();
+  useEffect(() => {
+    const icon = L.divIcon({
+      html: `<div style="
+        background:#E11D48;color:#fff;border-radius:10px;
+        width:32px;height:32px;display:flex;align-items:center;
+        justify-content:center;font-size:18px;
+        border:2px solid #fff;box-shadow:0 2px 10px rgba(225,29,72,0.6);
+        animation: pulse-red 2s infinite;
+      ">📰</div>`,
+      className: '', iconSize: [32, 32], iconAnchor: [16, 16],
+    });
+    const marker = L.marker([data.location.lat, data.location.lng], { icon })
+      .bindPopup(`<strong>${data.title}</strong><br/>${data.content}`)
+      .addTo(map);
+    return () => { marker.remove(); };
+  }, [data, map]);
+  return null;
+}
+
 function RoutePolyline({ points }: { points: Coordinates[] }) {
   const map = useMap();
   useEffect(() => {
@@ -90,9 +120,12 @@ function RoutePolyline({ points }: { points: Coordinates[] }) {
   return null;
 }
 
-const pulseStyle = `@keyframes pulse { 0% { transform:scale(1);opacity:0.8 } 50% { transform:scale(1.5);opacity:0.4 } 100% { transform:scale(2);opacity:0 } }`;
+const pulseStyle = `
+@keyframes pulse { 0% { transform:scale(1);opacity:0.8 } 50% { transform:scale(1.5);opacity:0.4 } 100% { transform:scale(2);opacity:0 } }
+@keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(225,29,72,0.7); } 70% { box-shadow: 0 0 0 10px rgba(225,29,72,0); } 100% { box-shadow: 0 0 0 0 rgba(225,29,72,0); } }
+`;
 
-export default function SafeMap({ center, zoom = 16, liveLocation, destination, polylinePoints = [], deviationSpot, style }: SafeMapProps) {
+export default function SafeMap({ center, zoom = 16, liveLocation, destination, polylinePoints = [], deviationSpot, newsAlerts = [], style }: SafeMapProps) {
   return (
     <>
       <style>{pulseStyle}</style>
@@ -102,6 +135,7 @@ export default function SafeMap({ center, zoom = 16, liveLocation, destination, 
         {liveLocation && <LiveDot position={liveLocation} />}
         {destination   && <DestinationMarker position={destination} />}
         {deviationSpot && <DeviationMarker position={deviationSpot} />}
+        {newsAlerts.map((alert, idx) => <NewsMarker key={idx} data={alert} />)}
         {polylinePoints.length >= 2 && <RoutePolyline points={polylinePoints} />}
       </MapContainer>
     </>

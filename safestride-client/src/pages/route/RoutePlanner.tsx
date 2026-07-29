@@ -1,12 +1,10 @@
 /**
- * RoutePlanner.tsx — F-23
- * Route safety scorer — enter origin + destination, see risk score.
+ * RoutePlanner.tsx — High Accuracy Version
  */
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { scoreRoute, type RouteRiskScore } from '../../services/api/risk.api';
-import { useGeolocation } from '../../hooks/useGeolocation';
 import RiskBadge from '../../components/journey/RiskBadge';
 import Button    from '../../components/common/Button';
 import Input     from '../../components/common/Input';
@@ -20,24 +18,69 @@ const TRANSPORT_MODES = [
 
 export default function RoutePlanner() {
   const navigate = useNavigate();
-  const { location, startWatching } = useGeolocation();
 
   const [originLat,   setOriginLat]   = useState('');
   const [originLng,   setOriginLng]   = useState('');
+  const [destName,    setDestName]    = useState('');
   const [destLat,     setDestLat]     = useState('');
   const [destLng,     setDestLng]     = useState('');
   const [transport,   setTransport]   = useState('walking');
   const [isLoading,   setIsLoading]   = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isLocating,  setIsLocating]  = useState(false); // New: Locating state
   const [error,       setError]       = useState('');
   const [result,      setResult]      = useState<RouteRiskScore | null>(null);
 
+  // Improved Geolocation function
   function useCurrentLocation() {
-    startWatching();
-    if (location) {
-      setOriginLat(location.lat.toFixed(6));
-      setOriginLng(location.lng.toFixed(6));
-    } else {
-      setError('Location not available yet. Please wait a moment.');
+    if (!("geolocation" in navigator)) {
+      setError("Your browser doesn't support GPS.");
+      return;
+    }
+
+    setIsLocating(true);
+    setError('');
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setOriginLat(position.coords.latitude.toFixed(6));
+        setOriginLng(position.coords.longitude.toFixed(6));
+        setIsLocating(false);
+      },
+      (err) => {
+        console.error(err);
+        setIsLocating(false);
+        if (err.code === 1) {
+          setError("Location access denied. Please allow GPS in your browser settings.");
+        } else {
+          setError("GPS timed out. Try moving near a window or refreshing.");
+        }
+      },
+      { 
+        enableHighAccuracy: true, // Force high accuracy
+        timeout: 10000, 
+        maximumAge: 0 
+      }
+    );
+  }
+
+  async function searchDestination(name: string) {
+    if (!name || name.length < 3) return;
+    setIsSearching(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(name)}&limit=1`);
+      const data = await res.json();
+      if (data && data[0]) {
+        setDestLat(parseFloat(data[0].lat).toFixed(6));
+        setDestLng(parseFloat(data[0].lon).toFixed(6));
+        setError('');
+      } else {
+        setError('Could not find that location. Try a different name.');
+      }
+    } catch (err) {
+      console.error('Search failed:', err);
+    } finally {
+      setIsSearching(false);
     }
   }
 
@@ -52,7 +95,7 @@ export default function RoutePlanner() {
     const dLng = parseFloat(destLng);
 
     if (isNaN(oLat) || isNaN(oLng) || isNaN(dLat) || isNaN(dLng)) {
-      setError('Please enter valid coordinates for both origin and destination');
+      setError('Please provide valid coordinates for both points.');
       return;
     }
 
@@ -65,7 +108,7 @@ export default function RoutePlanner() {
       });
       setResult(score);
     } catch {
-      setError('Failed to score route. Make sure the AI service is running.');
+      setError('Failed to score route. AI service might be offline.');
     } finally {
       setIsLoading(false);
     }
@@ -75,35 +118,47 @@ export default function RoutePlanner() {
     <div style={styles.container}>
       <button style={styles.back} onClick={() => navigate('/')}>← Back</button>
       <h1 style={styles.title}>Route Safety Check</h1>
-      <p style={styles.subtitle}>Check how safe your route is before you leave.</p>
+      <p style={styles.subtitle}>Plan your safe route with real-time risk analysis.</p>
 
       <form onSubmit={handleScore} style={styles.form}>
         {/* Origin */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
-            <span style={styles.sectionLabel}>📍 Your location</span>
-            <button type="button" style={styles.locationBtn} onClick={useCurrentLocation}>
-              Use GPS
+            <span style={styles.sectionLabel}>📍 Starting Point</span>
+            <button 
+              type="button" 
+              style={{...styles.locationBtn, opacity: isLocating ? 0.5 : 1}} 
+              onClick={useCurrentLocation}
+              disabled={isLocating}
+            >
+              {isLocating ? 'Locating...' : 'Use My GPS'}
             </button>
           </div>
           <div style={styles.coordRow}>
-            <Input label="Latitude"  placeholder="18.5314" value={originLat} onChange={(e) => setOriginLat(e.target.value)} />
-            <Input label="Longitude" placeholder="73.8446" value={originLng} onChange={(e) => setOriginLng(e.target.value)} />
+            <Input label="Lat" value={originLat} onChange={(e) => setOriginLat(e.target.value)} />
+            <Input label="Lng" value={originLng} onChange={(e) => setOriginLng(e.target.value)} />
           </div>
         </div>
 
         {/* Destination */}
         <div style={styles.section}>
-          <span style={styles.sectionLabel}>🏁 Destination</span>
+          <span style={styles.sectionLabel}>🏁 Destination Name</span>
+          <Input 
+            placeholder="e.g. Home, Pune Station" 
+            value={destName} 
+            onChange={(e) => setDestName(e.target.value)}
+            onBlur={() => searchDestination(destName)}
+          />
+          {isSearching && <p style={{ fontSize: '0.75rem', color: '#E91E8C', margin: 0 }}>Searching...</p>}
           <div style={styles.coordRow}>
-            <Input label="Latitude"  placeholder="18.5204" value={destLat} onChange={(e) => setDestLat(e.target.value)} />
-            <Input label="Longitude" placeholder="73.8567" value={destLng} onChange={(e) => setDestLng(e.target.value)} />
+            <Input label="Lat" value={destLat} onChange={(e) => setDestLat(e.target.value)} />
+            <Input label="Lng" value={destLng} onChange={(e) => setDestLng(e.target.value)} />
           </div>
         </div>
 
         {/* Transport */}
         <div>
-          <span style={styles.sectionLabel}>🚶 How are you travelling?</span>
+          <span style={styles.sectionLabel}>🚶 Travel Mode</span>
           <div style={styles.modeRow}>
             {TRANSPORT_MODES.map((m) => (
               <button
@@ -129,23 +184,19 @@ export default function RoutePlanner() {
         </Button>
       </form>
 
-      {/* Result */}
+      {/* Result Card */}
       {result && (
         <div style={styles.resultCard}>
           <div style={styles.resultHeader}>
             <RiskBadge riskLevel={result.riskLevel} riskScore={result.riskScore} size="lg" />
           </div>
-
           <p style={styles.recommendation}>{result.recommendation}</p>
-
           {result.dangerSpotCount > 0 && (
             <div style={styles.spotsWarning}>
-              ⚠️ {result.dangerSpotCount} community-reported danger spot(s) near this route
+              ⚠️ {result.dangerSpotCount} risk zones identified on this path.
             </div>
           )}
-
-          {/* Factor breakdown */}
-          <div style={styles.factorsTitle}>Risk breakdown</div>
+          <div style={styles.factorsTitle}>Risk Analysis Breakdown</div>
           {result.factors.map((f, i) => (
             <div key={i} style={styles.factorRow}>
               <div style={styles.factorInfo}>
@@ -162,14 +213,8 @@ export default function RoutePlanner() {
               <span style={styles.factorScore}>{Math.round(f.score)}/{f.max}</span>
             </div>
           ))}
-
-          {/* Start journey with this route */}
-          <Button
-            fullWidth
-            onClick={() => navigate('/journey/start')}
-            style={{ marginTop: '1rem' }}
-          >
-            Start Journey on This Route →
+          <Button fullWidth onClick={() => navigate('/journey/start')} style={{ marginTop: '1rem' }}>
+            Start Journey Now →
           </Button>
         </div>
       )}

@@ -1,0 +1,42 @@
+{
+  "name": "SafeStride — Journey Guardian",
+  "short_name": "SafeStride",
+  "description": "Walk alone. Never be alone. AI-powered women's safety companion.",
+  "theme_color": "#E91E8C",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "start_url": "/",
+  "scope": "/",
+  "lang": "en-IN",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Start Journey",
+      "short_name": "Journey",
+      "description": "Start guardian mode immediately",
+      "url": "/journey/start",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Fake Call",
+      "short_name": "Fake Call",
+      "description": "Trigger a fake incoming call",
+      "url": "/?action=fakecall",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "SOS",
+      "short_name": "SOS",
+      "description": "Emergency SOS",
+      "url": "/?action=sos",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["safety", "navigation", "utilities"],
+  "screenshots": []
+}

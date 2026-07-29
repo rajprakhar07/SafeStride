@@ -1,9 +1,9 @@
 /**
- * StartJourney.tsx — F-12
+ * StartJourney.tsx — F-12 (Updated with Auto-Location)
  * Screen to configure and start a new journey.
  */
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { startJourney } from '../../services/api/journey.api';
 import { useJourneyStore } from '../../store/journeyStore';
@@ -28,28 +28,47 @@ export default function StartJourney() {
   const [transport,   setTransport]   = useState('walking');
   const [destCoords,  setDestCoords]  = useState<{ lat: number; lng: number } | null>(null);
   const [isLoading,   setIsLoading]   = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [error,       setError]       = useState('');
 
-  // For demo/dev: allow manual lat/lng if geocoding not available
-  const [destLat, setDestLat] = useState('');
-  const [destLng, setDestLng] = useState('');
+  // Start watching location on mount
+  useEffect(() => {
+    startWatching();
+  }, [startWatching]);
+
+  // Function to search for location using OpenStreetMap Nominatim
+  const searchLocation = async () => {
+    if (!destination.trim()) return;
+    setIsSearching(true);
+    setError('');
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}&limit=1`);
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const result = data[0];
+        setDestCoords({ lat: parseFloat(result.lat), lng: parseFloat(result.lon) });
+        // Optional: Update destination with the full address from the search result
+        // setDestination(result.display_name);
+      } else {
+        setError('Location not found. Please try a different name.');
+      }
+    } catch (err) {
+      setError('Search failed. Please try again or enter coordinates manually.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   async function handleStart(e: FormEvent) {
     e.preventDefault();
     setError('');
 
-    // Resolve destination coordinates
-    let dest = destCoords;
-    if (!dest && destLat && destLng) {
-      dest = { lat: parseFloat(destLat), lng: parseFloat(destLng) };
-    }
-    if (!dest) {
-      setError('Please enter destination coordinates (lat/lng) for now. Google Maps integration coming soon.');
+    if (!destCoords) {
+      setError('Please search for a destination first.');
       return;
     }
 
     // Get current location
-    startWatching();
     const currentLoc = location
       ? { lat: location.lat, lng: location.lng }
       : { lat: 18.5204, lng: 73.8567 }; // Pune fallback for testing
@@ -63,7 +82,7 @@ export default function StartJourney() {
     setIsLoading(true);
     try {
       const journey = await startJourney({
-        destination:           { ...dest, formattedAddress: destination },
+        destination:           { ...destCoords, formattedAddress: destination },
         currentLocation:       currentLoc,
         plannedDurationMinutes: durationMins,
         transportMode:         transport as 'walking' | 'auto' | 'cab' | 'bus',
@@ -88,33 +107,23 @@ export default function StartJourney() {
       <p style={styles.subtitle}>Where are you going?</p>
 
       <form onSubmit={handleStart} style={styles.form}>
-        <Input
-          label="Destination name"
-          placeholder="e.g. Home, Pune Station, College"
-          value={destination}
-          onChange={(e) => setDestination(e.target.value)}
-          disabled={isLoading}
-        />
-
-        {/* Manual lat/lng for dev — will be replaced by Google Places in F-23 */}
-        <div style={styles.coordRow}>
+        <div style={{ position: 'relative' }}>
           <Input
-            label="Dest. Latitude"
-            placeholder="18.5204"
-            type="number"
-            value={destLat}
-            onChange={(e) => setDestLat(e.target.value)}
+            label="Destination name"
+            placeholder="e.g. Home, Pune Station, College"
+            value={destination}
+            onChange={(e) => setDestination(e.target.value)}
             disabled={isLoading}
+            onBlur={searchLocation} // Search when user leaves the field
           />
-          <Input
-            label="Dest. Longitude"
-            placeholder="73.8567"
-            type="number"
-            value={destLng}
-            onChange={(e) => setDestLng(e.target.value)}
-            disabled={isLoading}
-          />
+          {isSearching && <span style={styles.searching}>Searching...</span>}
         </div>
+
+        {destCoords && (
+          <div style={styles.coordPreview}>
+            📍 Location set: {destCoords.lat.toFixed(4)}, {destCoords.lng.toFixed(4)}
+          </div>
+        )}
 
         <div>
           <label style={styles.label}>Duration (minutes)</label>
@@ -150,7 +159,7 @@ export default function StartJourney() {
 
         {error && <p style={styles.error}>{error}</p>}
 
-        <Button type="submit" fullWidth loading={isLoading} style={{ marginTop: '0.5rem' }}>
+        <Button type="submit" fullWidth loading={isLoading} disabled={isSearching} style={{ marginTop: '0.5rem' }}>
           🛡️ Start Guardian Mode
         </Button>
       </form>
@@ -169,10 +178,11 @@ const styles: Record<string, React.CSSProperties> = {
   title:     { fontSize: '1.75rem', fontWeight: 700, color: '#1a1a1a', margin: '0 0 0.25rem', letterSpacing: '-0.02em' },
   subtitle:  { fontSize: '0.95rem', color: '#666', margin: '0 0 1.5rem' },
   form:      { display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 },
-  coordRow:  { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' },
   label:     { fontSize: '0.85rem', fontWeight: 600, color: '#333' },
   modeRow:   { display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.4rem' },
   modeBtn:   { padding: '0.5rem 0.85rem', border: 'none', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' },
   error:     { fontSize: '0.85rem', color: '#E91E8C', margin: 0 },
   hint:      { marginTop: '1.5rem', padding: '1rem', background: '#fff0f6', borderRadius: '12px' },
+  searching: { position: 'absolute', right: '10px', top: '35px', fontSize: '0.75rem', color: '#E91E8C' },
+  coordPreview: { fontSize: '0.8rem', color: '#27ae60', fontWeight: 600, background: '#eafaf1', padding: '0.5rem', borderRadius: '8px' }
 };

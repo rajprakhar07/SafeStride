@@ -146,7 +146,9 @@ export function useVoiceAssistant(): UseVoiceAssistantReturn {
       }
     };
     r.onerror = () => { setVoiceState('error'); setTimeout(() => setVoiceState('idle'), 2000); };
-    r.onend   = () => { if (voiceState === 'listening') setVoiceState('idle'); };
+    r.onend   = () => { 
+      setVoiceState((prev) => (prev === 'listening' ? 'idle' : prev)); 
+    };
 
     recognitionRef.current = r;
     r.start();

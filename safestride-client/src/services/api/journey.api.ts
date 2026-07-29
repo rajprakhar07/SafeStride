@@ -3,7 +3,8 @@
  */
 
 import apiClient from './client';
-import type { ActiveJourney } from '../store/journeyStore';
+// Fixed path: added one more level up to reach src/store/
+import type { ActiveJourney } from '../../store/journeyStore';
 
 export interface StartJourneyPayload {
   destination:           { lat: number; lng: number; formattedAddress?: string };
@@ -12,6 +13,8 @@ export interface StartJourneyPayload {
   transportMode:         'walking' | 'auto' | 'cab' | 'bus' | 'mixed';
   initiatedBy?:          'voice' | 'manual';
 }
+
+// ... rest of the file remains the same
 
 export interface JourneyHistoryItem {
   _id:               string;

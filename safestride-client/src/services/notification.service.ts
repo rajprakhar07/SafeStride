@@ -97,7 +97,7 @@ export async function saveFCMToken(token: string): Promise<void> {
  * Handle foreground push messages (app is open).
  */
 export async function setupForegroundMessageHandler(
-  onMessage: (payload: { notification?: { title?: string; body?: string } }) => void
+  _onMessage: (payload: { notification?: { title?: string; body?: string } }) => void
 ): Promise<void> {
   const messaging = await getMessaging();
   if (!messaging) return;
@@ -105,6 +105,6 @@ export async function setupForegroundMessageHandler(
   try {
     const { onMessage } = await import('firebase/messaging');
     // @ts-ignore
-    onMessage(messaging, onMessage);np
+    onMessage(messaging, _onMessage);
   } catch { /* ignore */ }
 }

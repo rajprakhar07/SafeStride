@@ -7,7 +7,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateProfile } from '../../services/api/user.api';
-import { addContact, getContacts, type TrustedContact } from '../../services/api/contacts.api';
+// Removed unused 'getContacts'
+import { addContact, type TrustedContact } from '../../services/api/contacts.api';
 import ContactCard from '../../components/contacts/ContactCard';
 import Button from '../../components/common/Button';
 import Input  from '../../components/common/Input';
