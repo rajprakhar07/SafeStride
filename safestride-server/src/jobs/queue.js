@@ -14,11 +14,20 @@
 const Bull   = require('bull');
 const config = require('../config/environment');
 
+const redisUrl = new URL(config.redis.url);
+
 const QUEUE_OPTIONS = {
-  redis: config.redis.url,
+  redis: {
+    host: redisUrl.hostname,
+    port: Number(redisUrl.port),
+    username: redisUrl.username,
+    password: redisUrl.password,
+    tls: {},
+  },
+
   defaultJobOptions: {
-    removeOnComplete: 100, // keep last 100 completed jobs
-    removeOnFail:     50,  // keep last 50 failed jobs
+    removeOnComplete: 100,
+    removeOnFail: 50,
   },
 };
 

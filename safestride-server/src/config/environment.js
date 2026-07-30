@@ -25,10 +25,14 @@ const schema = Joi.object({
     .default(5000),
 
   // ── Database ──────────────────────────────────────────────────────────────
-  MONGODB_URI: Joi.string()
-    .uri({ scheme: ['mongodb', 'mongodb+srv'] })
-    .required()
-    .messages({ 'string.uri': 'MONGODB_URI must be a valid mongodb:// or mongodb+srv:// URI' }),
+    MONGODB_URI: Joi.string()
+  .pattern(/^mongodb(\+srv)?:\/\//)
+  .required()
+  .messages({
+    'string.pattern.base': 'MONGODB_URI must start with mongodb:// or mongodb+srv://',
+  }),
+ 
+    
 
   // ── Cache ─────────────────────────────────────────────────────────────────
   REDIS_URL: Joi.string()
