@@ -49,5 +49,16 @@ app.use('/api/v1', require('./routes'));
 // ─── 404 + Global error handler (must be LAST) ────────────────────────────────
 app.use(notFoundHandler);
 app.use(errorHandler);
+const path = require('path' );
+if (process.env.NODE_ENV === 'production') {
+  const distPath = path.join(__dirname, '../../safestride-client/dist');
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(distPath, 'index.html'));
+    }
+  });
+}
+
 
 module.exports = app;

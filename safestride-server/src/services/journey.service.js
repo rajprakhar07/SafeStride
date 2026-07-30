@@ -1,10 +1,10 @@
 'use strict';
 
 /**
- * journey.service.js — F-10
+ * journey.service.js — F-10 (Updated to OpenRouteService - Final)
  *
  * Core business logic for journey lifecycle:
- *   - Fetch route from Google Directions API (or fallback straight-line)
+ *   - Fetch route from OpenRouteService (ORS) API (Free & Open Source)
  *   - Store/flush location pings (Redis → MongoDB)
  *   - Batch flush job management
  */
@@ -13,8 +13,6 @@ const axios          = require('axios');
 const Journey        = require('../models/Journey');
 const LocationPing   = require('../models/LocationPing');
 const { getRedisClient } = require('../config/redis');
-const { decodePolyline, polylineDistance } = require('../utils/geo.utils');
-const { calculateETA } = require('./eta.service');
 const config         = require('../config/environment');
 
 const PING_REDIS_KEY   = (journeyId) => `journey:${journeyId}:pings`;
@@ -22,51 +20,63 @@ const PING_BATCH_SIZE  = 50;   // max pings buffered in Redis per journey
 const FLUSH_INTERVAL_S = 60;   // flush to MongoDB every 60 seconds
 
 /**
- * Fetch route from Google Directions API.
+ * Fetch route from OpenRouteService (ORS) API.
  * Falls back to straight-line if no API key or request fails.
  *
  * @param {{ lat: number, lng: number }} origin
  * @param {{ lat: number, lng: number }} destination
- * @param {string} mode — walking|driving|transit
+ * @param {string} mode — walking|auto|cab|bus|mixed
  * @returns {{ polyline: string|null, distanceMeters: number }}
  */
 async function fetchRoute(origin, destination, mode = 'walking') {
-  const apiKey = config.googleMaps?.apiKey;
+  // Use ORS_API_KEY from your environment config
+  const apiKey = config.ors?.apiKey || process.env.ORS_API_KEY;
 
-  if (!apiKey || apiKey === 'AIzaSy_your_google_maps_api_key') {
-    // No API key — use straight-line distance as fallback
+  if (!apiKey || apiKey === 'your_ors_api_key_here') {
     const { haversineDistance } = require('../utils/geo.utils');
     const dist = haversineDistance(origin.lat, origin.lng, destination.lat, destination.lng);
-    console.log('⚠  Google Maps API key not set — using straight-line route fallback');
+    console.log('⚠  ORS API key not set — using straight-line route fallback');
     return { polyline: null, distanceMeters: Math.round(dist) };
   }
 
   try {
-    const modeMap = { walking: 'walking', auto: 'driving', cab: 'driving', bus: 'transit', mixed: 'walking' };
-    const gmMode  = modeMap[mode] || 'walking';
+    // ORS Profiles: foot-walking, driving-car, cycling-regular, etc.
+    const modeMap = { 
+      walking: 'foot-walking', 
+      auto:    'driving-car', 
+      cab:     'driving-car', 
+      bus:     'driving-car',
+      mixed:   'foot-walking' 
+    };
+    const profile = modeMap[mode] || 'foot-walking';
 
-    const url = 'https://maps.googleapis.com/maps/api/directions/json';
+    // Using the new recommended URL: api.heigit.org
+    const url = `https://api.heigit.org/v2/directions/${profile}`;
+    
     const { data } = await axios.get(url, {
       params: {
-        origin:      `${origin.lat},${origin.lng}`,
-        destination: `${destination.lat},${destination.lng}`,
-        mode:        gmMode,
-        key:         apiKey,
+        api_key: apiKey,
+        start:   `${origin.lng},${origin.lat}`, // ORS expects [longitude, latitude]
+        end:     `${destination.lng},${destination.lat}`,
       },
       timeout: 5000,
     });
 
-    if (data.status !== 'OK' || !data.routes?.length) {
-      throw new Error(`Directions API returned: ${data.status}`);
+    if (!data.features?.length) {
+      throw new Error('ORS API returned no routes');
     }
 
-    const route    = data.routes[0];
-    const polyline = route.overview_polyline.points;
-    const distanceMeters = route.legs.reduce((sum, leg) => sum + leg.distance.value, 0);
+    const feature = data.features[0];
+    const geometry = feature.geometry; // GeoJSON LineString
+    const distanceMeters = feature.properties.summary.distance;
 
-    return { polyline, distanceMeters };
+    return { 
+      // Send GeoJSON coordinates as a string for the frontend to parse
+      polyline: JSON.stringify(geometry.coordinates), 
+      distanceMeters: Math.round(distanceMeters) 
+    };
   } catch (err) {
-    console.warn(`⚠  Directions API failed: ${err.message} — using straight-line fallback`);
+    console.warn(`⚠  ORS API failed: ${err.message} — using straight-line fallback`);
     const { haversineDistance } = require('../utils/geo.utils');
     const dist = haversineDistance(origin.lat, origin.lng, destination.lat, destination.lng);
     return { polyline: null, distanceMeters: Math.round(dist) };
@@ -75,10 +85,6 @@ async function fetchRoute(origin, destination, mode = 'walking') {
 
 /**
  * Store a location ping in Redis and schedule batch flush.
- *
- * @param {string} journeyId
- * @param {string} userId
- * @param {object} pingData — { lat, lng, accuracy, speed, heading, batteryLevel, timestamp }
  */
 async function storePing(journeyId, userId, pingData) {
   const redis = getRedisClient();
@@ -96,11 +102,9 @@ async function storePing(journeyId, userId, pingData) {
     isAnomaly:    false,
   });
 
-  // RPUSH — append to list; set TTL of 2 hours (pings flushed to DB every 60s)
   await redis.rpush(key, pingRecord);
   await redis.expire(key, 2 * 60 * 60);
 
-  // If buffer is full, flush immediately
   const count = await redis.llen(key);
   if (count >= PING_BATCH_SIZE) {
     await flushPingsToMongoDB(journeyId);
@@ -109,16 +113,11 @@ async function storePing(journeyId, userId, pingData) {
 
 /**
  * Flush all buffered pings from Redis to MongoDB.
- * Called every 60 seconds by the dead man's switch cron job.
- *
- * @param {string} journeyId
- * @returns {number} number of pings flushed
  */
 async function flushPingsToMongoDB(journeyId) {
   const redis = getRedisClient();
   const key   = PING_REDIS_KEY(journeyId);
 
-  // Atomically get all pings and delete the key
   const pipeline = redis.pipeline();
   pipeline.lrange(key, 0, -1);
   pipeline.del(key);
@@ -139,10 +138,6 @@ async function flushPingsToMongoDB(journeyId) {
 
 /**
  * Get the latest ping for a journey from Redis (real-time).
- * Falls back to MongoDB if Redis is empty.
- *
- * @param {string} journeyId
- * @returns {{ lat: number, lng: number } | null}
  */
 async function getLatestPing(journeyId) {
   try {
