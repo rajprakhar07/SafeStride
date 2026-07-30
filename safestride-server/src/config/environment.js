@@ -52,7 +52,7 @@ const schema = Joi.object({
   FIREBASE_SERVICE_ACCOUNT: Joi.string().optional(),
 
   // ── Google Maps (required in F-10) ────────────────────────────────────────
-  GOOGLE_MAPS_API_KEY: Joi.string().optional(),
+  ORS_API_KEY: Joi.string().optional(),
 
   // ── Cloudinary (required in F-05) ─────────────────────────────────────────
   CLOUDINARY_URL: Joi.string().optional(),
@@ -125,9 +125,9 @@ const config = Object.freeze({
   })(),
 },
 
-  google: {
-    mapsApiKey: env.GOOGLE_MAPS_API_KEY,
-  },
+ openRouteService: {
+  apiKey: env.ORS_API_KEY,
+},
 
   cloudinary: {
     url: env.CLOUDINARY_URL,
