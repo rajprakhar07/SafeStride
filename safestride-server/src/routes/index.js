@@ -11,5 +11,6 @@ router.use('/portal',   require('./portal.routes'));
 router.use('/sos',      require('./sos.routes'));
 router.use('/risk',     require('./risk.routes'));
 router.use('/admin',    require('./admin.routes'));   // F-30
+router.use('/geocode', require('./geocode.routes'));
 
 module.exports = router;

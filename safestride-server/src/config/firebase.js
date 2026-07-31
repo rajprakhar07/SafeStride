@@ -14,6 +14,10 @@ function initFirebase() {
   if (firebaseApp) return firebaseApp;
 
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+  console.log(
+  'Firebase service account loaded:',
+  !!process.env.FIREBASE_SERVICE_ACCOUNT
+);
 
   if (!serviceAccountJson || serviceAccountJson === '{"type":"service_account","project_id":"..."}') {
     console.log('⚠  Firebase service account not configured — push notifications disabled');
