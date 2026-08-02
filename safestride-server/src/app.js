@@ -17,9 +17,24 @@ const app = express();
 
 // ─── Security middleware ──────────────────────────────────────────────────────
 app.use(helmet());
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://safe-stride-five.vercel.app',
+];
+
 app.use(cors({
-  origin:      config.cors.frontendUrl,
-  credentials: true, // required for httpOnly cookie to be sent cross-origin
+  origin: (origin, callback) => {
+    // Allow requests without Origin (Postman, Render health checks, etc.)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  credentials: true,
 }));
 
 // ─── Body parsing ─────────────────────────────────────────────────────────────
