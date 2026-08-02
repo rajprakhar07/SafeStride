@@ -66,6 +66,15 @@ const schema = Joi.object({
 
   // ── AI Microservice (required in F-22) ────────────────────────────────────
   AI_SERVICE_URL: Joi.string().uri().default('http://localhost:8000'),
+   // ── AI Microservice (required in F-22) ────────────────────────────────────
+   AI_SERVICE_URL: Joi.string().uri().default('http://localhost:8000'),
+ 
+ // ── AI Safety Assistant (new, additive, all optional) ─────────────────────
+  AI_PROVIDER:        Joi.string().valid('openai', 'gemini', 'claude').default('openai'),
+  OPENAI_API_KEY:      Joi.string().optional(),
+  GEMINI_API_KEY:      Joi.string().optional(),
+  ANTHROPIC_API_KEY:   Joi.string().optional(),
+  AI_MODEL:            Joi.string().optional(),
 
   // ── CORS ──────────────────────────────────────────────────────────────────
   FRONTEND_URL: Joi.string().uri().default('http://localhost:5173'),
@@ -143,6 +152,13 @@ const config = Object.freeze({
 
   aiService: {
     url: env.AI_SERVICE_URL,
+  },
+    ai: {
+    provider:       env.AI_PROVIDER,
+    openaiApiKey:    env.OPENAI_API_KEY,
+    geminiApiKey:    env.GEMINI_API_KEY,
+    anthropicApiKey: env.ANTHROPIC_API_KEY,
+    model:          env.AI_MODEL,
   },
 
   cors: {

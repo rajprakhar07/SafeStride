@@ -10,6 +10,7 @@ router.use('/journeys', require('./journey.routes'));
 router.use('/portal',   require('./portal.routes'));
 router.use('/sos',      require('./sos.routes'));
 router.use('/risk',     require('./risk.routes'));
+router.use('/ai',       require('./ai.routes'));      // AI Safety Assistant
 router.use('/admin',    require('./admin.routes'));   // F-30
 router.use('/geocode', require('./geocode.routes'));
 
