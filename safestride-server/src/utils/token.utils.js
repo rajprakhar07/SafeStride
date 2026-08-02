@@ -147,11 +147,11 @@ async function revokeAllRefreshTokens(userId) {
  */
 function setRefreshCookie(res, token) {
   res.cookie('refreshToken', token, {
-    httpOnly:  true,
-    secure:    config.isProd,           // HTTPS only in production
-    sameSite:  'strict',
-    maxAge:    30 * 24 * 60 * 60 * 1000, // 30 days in ms
-    path:      '/api/v1/auth',           // only sent to auth endpoints
+    httpOnly: true,
+    secure: config.isProd,
+    sameSite: 'none',
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: '/api/v1/auth',
   });
 }
 
@@ -161,11 +161,11 @@ function setRefreshCookie(res, token) {
  */
 function clearRefreshCookie(res) {
   res.clearCookie('refreshToken', {
-    httpOnly: true,
-    secure:   config.isProd,
-    sameSite: 'strict',
-    path:     '/api/v1/auth',
-  });
+  httpOnly: true,
+  secure: config.isProd,
+  sameSite: 'none',
+  path: '/api/v1/auth',
+});
 }
 
 module.exports = {
