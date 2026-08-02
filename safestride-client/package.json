@@ -19,9 +19,11 @@
     "axios": "^1.6.0",
     "firebase": "^12.17.0",
     "leaflet": "^1.9.4",
+    "libphonenumber-js": "^1.13.10",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
+    "react-phone-number-input": "^3.4.17",
     "react-router-dom": "^6.21.0",
     "socket.io-client": "^4.8.3",
     "zustand": "^4.4.7"

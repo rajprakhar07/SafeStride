@@ -7,17 +7,15 @@
 
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import { sendOTP } from '../../services/api/auth.api';
-
-// Simple phone validation — E.164 format
-function isValidPhone(phone: string): boolean {
-  return /^\+[1-9]\d{6,14}$/.test(phone);
-}
 
 export default function PhoneEntry() {
   const navigate = useNavigate();
 
-  const [phone,      setPhone]      = useState('');
+  // `phone` is kept in E.164 format (e.g. "+919876543210") by the library itself,
+  // or `undefined` while the field is empty.
+  const [phone,      setPhone]      = useState<string | undefined>(undefined);
   const [error,      setError]      = useState('');
   const [isLoading,  setIsLoading]  = useState(false);
 
@@ -25,8 +23,8 @@ export default function PhoneEntry() {
     e.preventDefault();
     setError('');
 
-    const formatted = phone.trim();
-    if (!isValidPhone(formatted)) {
+    const formatted = (phone ?? '').trim();
+    if (!formatted || !isValidPhoneNumber(formatted)) {
       setError('Enter a valid phone number with country code e.g. +919876543210');
       return;
     }
@@ -60,18 +58,21 @@ export default function PhoneEntry() {
           <label htmlFor="phone" style={styles.label}>
             Your mobile number
           </label>
-          <input
+
+          <PhoneInput
             id="phone"
-            type="tel"
-            inputMode="tel"
-            placeholder="+91 98765 43210"
+            className="phone-entry-input"
+            international
+            defaultCountry="IN"
+            countryCallingCodeEditable={false}
+            placeholder="98765 43210"
             value={phone}
-            onChange={(e) => { setPhone(e.target.value); setError(''); }}
-            style={styles.input}
-            autoFocus
-            autoComplete="tel"
+            onChange={(value) => { setPhone(value); setError(''); }}
             disabled={isLoading}
+            autoFocus
+            numberInputProps={{ autoComplete: 'tel' }}
           />
+
           {error && <p style={styles.errorText}>{error}</p>}
           <p style={styles.hint}>We'll send a 6-digit code to verify your number.</p>
         </div>
@@ -92,6 +93,50 @@ export default function PhoneEntry() {
       <p style={styles.footer}>
         By continuing, you agree to our Terms & Privacy Policy.
       </p>
+
+      {/* Scoped styles to make react-phone-number-input visually match the
+          previous plain <input>: same height, width, radius, border, font
+          size, padding, and color scheme. */}
+      <style>{`
+        .phone-entry-input.PhoneInput {
+          width: 100%;
+          padding: 0.85rem 1rem;
+          font-size: 1.1rem;
+          border: 1.5px solid #e0e0e0;
+          border-radius: 12px;
+          box-sizing: border-box;
+          transition: border-color 0.2s;
+          background: #fff;
+        }
+        .phone-entry-input.PhoneInput--focus {
+          border-color: #E91E8C;
+        }
+        .phone-entry-input .PhoneInputInput {
+          border: none;
+          outline: none;
+          font-size: 1.1rem;
+          font-family: inherit;
+          color: inherit;
+          background: transparent;
+          width: 100%;
+          padding: 0;
+        }
+        .phone-entry-input .PhoneInputCountry {
+          margin-right: 0.6rem;
+        }
+        .phone-entry-input .PhoneInputCountryIcon {
+          width: 1.4em;
+          height: 1.4em;
+          box-shadow: none;
+        }
+        .phone-entry-input .PhoneInputCountrySelectArrow {
+          opacity: 0.6;
+        }
+        .phone-entry-input[disabled],
+        .phone-entry-input.PhoneInput--disabled {
+          opacity: 0.6;
+        }
+      `}</style>
     </div>
   );
 }
@@ -144,16 +189,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize:   '0.85rem',
     fontWeight: 600,
     color:      '#333',
-  },
-  input: {
-    width:        '100%',
-    padding:      '0.85rem 1rem',
-    fontSize:     '1.1rem',
-    border:       '1.5px solid #e0e0e0',
-    borderRadius: '12px',
-    outline:      'none',
-    boxSizing:    'border-box',
-    transition:   'border-color 0.2s',
   },
   errorText: {
     fontSize: '0.82rem',
