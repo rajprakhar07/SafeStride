@@ -91,6 +91,7 @@ async function addContact(req, res, next) {
 
     // 5. Send invite SMS
     const user     = await User.findById(userId).lean();
+    console.log("FRONTEND_URL =", config.cors.frontendUrl);
     const portalUrl = `${config.cors.frontendUrl}/portal/${rawToken}`;
     await sendInviteSMS(contact, user, portalUrl);
 
