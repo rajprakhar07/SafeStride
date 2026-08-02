@@ -58,6 +58,11 @@ async function sendOTP(req, res, next) {
     await otpUtils.storeOTP(phone, otp);
 
     // 4. Send SMS
+    console.log("===== OTP DEBUG =====");
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("isProd:", config.isProd);
+console.log("TWILIO_ACCOUNT_SID:", !!config.twilio.accountSid);
+console.log("TWILIO_AUTH_TOKEN:", !!config.twilio.authToken);
     const client = getTwilioClient();
     if (client && config.isProd) {
       await client.messages.create({
