@@ -65,11 +65,22 @@ export default function ActiveJourney() {
     startWatching();
     const timer = setTimeout(() => {
       joinJourney(activeJourney._id);
-      startPinging(() => {
-        const loc = locationRef.current;
-        if (!loc) return null;
-        return { lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy, speed: loc.speed };
-      });
+   startPinging(() => {
+  const loc = locationRef.current;
+
+  console.log("📍 Current location:", loc);
+
+  if (!loc) return null;
+
+  console.log("📤 Sending ping", loc);
+
+  return {
+    lat: loc.lat,
+    lng: loc.lng,
+    accuracy: loc.accuracy,
+    speed: loc.speed,
+  };
+});
     }, 1000);
     return () => { clearTimeout(timer); stopPinging(); stopWatching(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps

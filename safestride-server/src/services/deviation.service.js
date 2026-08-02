@@ -16,9 +16,12 @@
  */
 
 const Journey      = require('../models/Journey');
-const { distanceFromPolyline, decodePolyline } = require('../utils/geo.utils');
+const { distanceFromPolyline} = require('../utils/geo.utils');
 const { getRedisClient } = require('../config/redis');
 const { emitToJourneyRoom, emitToPortalRoom } = require('../sockets');
+const notificationService = require('./notification.service');
+const TrustedContact = require('../models/TrustedContact');
+const config = require('../config/environment');
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const DEVIATION_THRESHOLD_METERS  = 200;  // distance from route to count as off-route
@@ -49,16 +52,52 @@ async function checkDeviation({ journeyId, userId, location, encodedPolyline }) 
   const redis = getRedisClient();
 
   // Decode polyline to points array
-  const routePoints = decodePolyline(encodedPolyline);
-  if (routePoints.length < 2) {
-    return { isDeviation: false, deviationMeters: null };
-  }
+ let routePoints;
+
+try {
+  // ORS stores GeoJSON coordinates
+  const coordinates = JSON.parse(encodedPolyline);
+
+  routePoints = coordinates.map(([lng, lat]) => ({
+    lat,
+    lng,
+  }));
+} catch {
+  // fallback for Google encoded polyline
+  routePoints = decodePolyline(encodedPolyline);
+}
+
+if (routePoints.length < 2) {
+  console.log("❌ Route has too few points:", routePoints.length);
+  return {
+    isDeviation: false,
+    deviationMeters: null,
+  };
+}
+
+const distanceFromRoute = distanceFromPolyline(location, routePoints);
+
+console.log("========== DEVIATION CHECK ==========");
+console.log("Journey:", journeyId);
+console.log("Current location:", location);
+console.log("Polyline exists:", !!encodedPolyline);
+console.log("Polyline length:", encodedPolyline?.length);
+console.log("Decoded points:", routePoints.length);
+console.log("Distance from route:", Math.round(distanceFromRoute), "meters");
+console.log("====================================");
 
   // Calculate distance from current ping to nearest point on route
-  const distanceFromRoute = distanceFromPolyline(location, routePoints);
+  
+  console.log(`📍 Distance from route: ${Math.round(distanceFromRoute)}m`);
 
   // ── User is back on route — reset deviation counter ──────────────────────────
   if (distanceFromRoute <= DEVIATION_RESET_METERS) {
+console.log("✅ ON ROUTE - resetting deviation counter");
+console.log("Distance:", distanceFromRoute);
+
+const stateRaw = await redis.get(deviationKey(journeyId));
+
+console.log("Redis state:", stateRaw);
     await redis.del(deviationKey(journeyId));
     return { isDeviation: false, deviationMeters: Math.round(distanceFromRoute) };
   }
@@ -125,12 +164,29 @@ async function checkDeviation({ journeyId, userId, location, encodedPolyline }) 
         message:         'User has deviated from planned route.',
       });
 
-      console.log(`⚠  Deviation detected — journey ${journeyId}, dist: ${Math.round(distanceFromRoute)}m`);
+    console.log(`⚠  Deviation detected — journey ${journeyId}, dist: ${Math.round(distanceFromRoute)}m`);
 
-      return {
-        isDeviation:     true,
-        deviationMeters: Math.round(distanceFromRoute),
-      };
+// Notify trusted contacts
+const contact = await TrustedContact.findOne({
+  userId,
+  status: 'active',
+}).lean();
+
+const portalUrl = contact
+  ? `${config.cors.frontendUrl}/portal/[see-invitation-link]`
+  : config.cors.frontendUrl;
+
+await notificationService.notifyDeviation(
+  userId,
+  journeyId,
+  Math.round(distanceFromRoute),
+  portalUrl
+);
+
+return {
+  isDeviation: true,
+  deviationMeters: Math.round(distanceFromRoute),
+};
     }
 
     return {

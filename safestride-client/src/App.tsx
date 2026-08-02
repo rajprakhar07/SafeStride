@@ -1,6 +1,8 @@
 /**
  * App.tsx — updated in F-32
  * Adds: PWA shortcut handler, offline banner, lazy route loading.
+ *
+ * [F-24] Added FcmInitializer — see marked block below. Nothing else changed.
  */
 
 import { useEffect, useState, lazy, Suspense } from 'react';
@@ -9,6 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore }  from './store/authStore';
 import apiClient         from './services/api/client';
 import { useFakeCall }   from './hooks/useFakeCall';
+import { useFcmToken }   from './hooks/useFcmToken'; // [F-24]
 
 // Eager load critical auth screens
 import PhoneEntry from './pages/auth/PhoneEntry';
@@ -103,12 +106,28 @@ function OfflineBanner() {
     </div>
   );
 }
+function FcmInitializer() {
+  const { isAuthenticated } = useAuthStore();
+  useFcmToken(isAuthenticated);
+  return null;
+}
+
+// [F-24] ── FcmInitializer ──────────────────────────────────────────────────
+// Mirrors the SessionChecker/OfflineBanner pattern above: a headless
+// component mounted once at the root, reading auth state and doing side
+// effects only. Runs useFcmToken() (permission request, token registration,
+// foreground listener) once the user is authenticated. Renders nothing.
+
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+      <SessionChecker />
+      <FcmInitializer />
+      <OfflineBanner />
         <SessionChecker />
+       
         <OfflineBanner />
         <Suspense fallback={<Loading />}>
           <Routes>

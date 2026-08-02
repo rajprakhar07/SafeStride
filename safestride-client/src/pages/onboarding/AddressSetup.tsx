@@ -5,26 +5,14 @@
  * Google Places autocomplete wired if API key is set.
  */
 
-import { useState, useEffect, useRef, FormEvent } from 'react';
+import { useState } from 'react';
+import { searchAddress } from '../../services/api/geocode.api';
 import { useNavigate } from 'react-router-dom';
 import { updateProfile } from '../../services/api/user.api';
 import Button from '../../components/common/Button';
 import Input  from '../../components/common/Input';
 
-declare global {
-  interface Window {
-    google?: {
-      maps?: {
-        places?: {
-          Autocomplete: new (el: HTMLInputElement, opts?: object) => {
-            addListener: (event: string, handler: () => void) => void;
-            getPlace: () => { formatted_address?: string; geometry?: { location?: { lat: () => number; lng: () => number } } };
-          };
-        };
-      };
-    };
-  }
-}
+
 
 interface AddressState {
   formattedAddress: string;
@@ -41,39 +29,14 @@ export default function AddressSetup() {
   const [isLoading, setIsLoading] = useState(false);
   const [error,     setError]     = useState('');
   const [locating,  setLocating]  = useState(false);
+  const [homeSuggestions, setHomeSuggestions] = useState([]);
+  const [workSuggestions, setWorkSuggestions] = useState([]);
+  const [searchingHome, setSearchingHome] = useState(false);
+  const [searchingWork, setSearchingWork] = useState(false);
 
-  const homeInputRef = useRef<HTMLInputElement>(null);
-  const workInputRef = useRef<HTMLInputElement>(null);
-
+ 
   // Wire Google Places autocomplete if key is set
-  useEffect(() => {
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (!apiKey || apiKey === 'your_google_maps_api_key') return;
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-    script.async = true;
-    script.onload = () => {
-      if (!window.google?.maps?.places) return;
-
-      [homeInputRef, workInputRef].forEach((ref, i) => {
-        if (!ref.current) return;
-        const ac = new window.google!.maps!.places!.Autocomplete(ref.current, {
-          types:               ['geocode'],
-          componentRestrictions: { country: 'in' },
-        });
-        ac.addListener('place_changed', () => {
-          const place = ac.getPlace();
-          const addr  = place.formatted_address || '';
-          const lat   = place.geometry?.location?.lat() ?? 0;
-          const lng   = place.geometry?.location?.lng() ?? 0;
-          if (i === 0) setHome({ formattedAddress: addr, coordinates: { lat, lng } });
-          else         setWork({ formattedAddress: addr, coordinates: { lat, lng } });
-        });
-      });
-    };
-    document.head.appendChild(script);
-  }, []);
+  
 
   function useMyLocation() {
     if (!navigator.geolocation) { setError('Geolocation not supported'); return; }
@@ -87,6 +50,41 @@ export default function AddressSetup() {
       () => { setError('Could not get location. Please type your address.'); setLocating(false); }
     );
   }
+  async function fetchSuggestions(query: string, isHome: boolean) {
+  if (query.trim().length < 3) {
+    if (isHome) {
+      setHomeSuggestions([]);
+    } else {
+      setWorkSuggestions([]);
+    }
+    return;
+  }
+
+  try {
+    if (isHome) {
+      setSearchingHome(true);
+    } else {
+      setSearchingWork(true);
+    }
+
+    const results = await searchAddress(query);
+
+    if (isHome) {
+      setHomeSuggestions(results);
+    } else {
+      setWorkSuggestions(results);
+    }
+
+  } catch (err) {
+    console.error(err);
+  } finally {
+    if (isHome) {
+      setSearchingHome(false);
+    } else {
+      setSearchingWork(false);
+    }
+  }
+}
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -141,12 +139,59 @@ export default function AddressSetup() {
             <span style={styles.fieldLabel}>Home address</span>
           </div>
           <Input
-            ref={homeInputRef}
+            
             placeholder="Start typing your home address…"
             value={home.formattedAddress}
-            onChange={(e) => setHome({ formattedAddress: e.target.value, coordinates: null })}
+            onChange={(e) => {
+    const value = e.target.value;
+
+    setHome({
+        formattedAddress: value,
+        coordinates: null
+    });
+
+    fetchSuggestions(value, true);
+}}
             disabled={isLoading}
           />
+          {searchingHome && (
+  <div style={{ fontSize: '0.85rem', color: '#777' }}>
+    Searching...
+  </div>
+)}
+
+{homeSuggestions.length > 0 && (
+  <div
+    style={{
+      border: '1px solid #ddd',
+      borderRadius: 8,
+      background: '#fff',
+      maxHeight: 220,
+      overflowY: 'auto',
+      marginTop: 6,
+    }}
+  >
+    {homeSuggestions.map((item: any, index: number) => (
+      <div
+        key={index}
+        style={{
+          padding: '10px',
+          cursor: 'pointer',
+          borderBottom: '1px solid #eee',
+        }}
+        onClick={() => {
+          setHome({
+            formattedAddress: item.label,
+            coordinates: item.coordinates,
+          });
+          setHomeSuggestions([]);
+        }}
+      >
+        {item.label}
+      </div>
+    ))}
+  </div>
+)}
           <button type="button" style={styles.locationBtn} onClick={useMyLocation} disabled={locating}>
             {locating ? '📍 Getting location…' : '📍 Use my current location'}
           </button>
@@ -159,12 +204,58 @@ export default function AddressSetup() {
             <span style={styles.fieldLabel}>Work / College address</span>
           </div>
           <Input
-            ref={workInputRef}
+            
             placeholder="Start typing your work address… (optional)"
             value={work.formattedAddress}
-            onChange={(e) => setWork({ formattedAddress: e.target.value, coordinates: null })}
+            onChange={(e) => {
+    const value = e.target.value;
+
+    setWork({
+        formattedAddress: value,
+        coordinates: null
+    });
+
+    fetchSuggestions(value, false);
+}}
             disabled={isLoading}
-          />
+          />{searchingWork && (
+  <div style={{ fontSize: '0.85rem', color: '#777' }}>
+    Searching...
+  </div>
+)}
+
+{workSuggestions.length > 0 && (
+  <div
+    style={{
+      border: '1px solid #ddd',
+      borderRadius: 8,
+      background: '#fff',
+      maxHeight: 220,
+      overflowY: 'auto',
+      marginTop: 6,
+    }}
+  >
+    {workSuggestions.map((item: any, index: number) => (
+      <div
+        key={index}
+        style={{
+          padding: '10px',
+          cursor: 'pointer',
+          borderBottom: '1px solid #eee',
+        }}
+        onClick={() => {
+          setWork({
+            formattedAddress: item.label,
+            coordinates: item.coordinates,
+          });
+          setWorkSuggestions([]);
+        }}
+      >
+        {item.label}
+      </div>
+    ))}
+  </div>
+)}
         </div>
 
         {error && <p style={styles.error}>{error}</p>}

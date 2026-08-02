@@ -1,69 +1,79 @@
 /**
  * useWebSocket.ts — F-12
  * Socket.io client hook for real-time journey tracking.
- * Connects to /journey namespace, sends pings, receives location updates.
  */
 
 import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { useAuthStore }    from '../store/authStore';
+import { useAuthStore } from '../store/authStore';
 import { useJourneyStore } from '../store/journeyStore';
 
-const SOCKET_URL    = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
-const PING_INTERVAL = 10_000; // 10 seconds
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+const PING_INTERVAL = 10_000;
 
 export function useWebSocket() {
-  const socketRef     = useRef<Socket | null>(null);
-  const pingTimerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const pingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const accessToken      = useAuthStore((s) => s.accessToken);
-  const setConnected     = useJourneyStore((s) => s.setConnected);
+  const accessToken = useAuthStore((s) => s.accessToken);
+
+  const setConnected = useJourneyStore((s) => s.setConnected);
   const setCurrentLocation = useJourneyStore((s) => s.setCurrentLocation);
-  const setETA           = useJourneyStore((s) => s.setETA);
+  const setETA = useJourneyStore((s) => s.setETA);
   const setDeviationAlert = useJourneyStore((s) => s.setDeviationAlert);
-  const clearJourney     = useJourneyStore((s) => s.clearJourney);
+  const clearJourney = useJourneyStore((s) => s.clearJourney);
 
-  // ── Connect to /journey namespace ────────────────────────────────────────────
+  // ---------------- Connect ----------------
+
   const connect = useCallback(() => {
     if (socketRef.current?.connected) return;
     if (!accessToken) return;
 
     const socket = io(`${SOCKET_URL}/journey`, {
-      auth:       { token: accessToken },
+      auth: { token: accessToken },
       transports: ['websocket', 'polling'],
-      reconnection:        true,
+      reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay:   1000,
+      reconnectionDelay: 1000,
     });
 
     socket.on('connect', () => {
-      setConnected(true);
       console.log('🔌 Socket connected:', socket.id);
+      setConnected(true);
     });
 
     socket.on('disconnect', (reason) => {
-      setConnected(false);
       console.log('🔌 Socket disconnected:', reason);
+      setConnected(false);
     });
 
     socket.on('location:update', (data) => {
+      console.log('📥 location:update', data);
+
       setCurrentLocation({
-        lat:       data.lat,
-        lng:       data.lng,
-        accuracy:  data.accuracy,
-        speed:     data.speed,
+        lat: data.lat,
+        lng: data.lng,
+        accuracy: data.accuracy,
+        speed: data.speed,
         timestamp: data.timestamp,
       });
+
       if (data.eta) {
-        setETA(new Date(data.eta), data.remainingMeters, data.remainingMinutes);
+        setETA(
+          new Date(data.eta),
+          data.remainingMeters,
+          data.remainingMinutes
+        );
       }
     });
 
     socket.on('journey:deviation', () => {
+      console.log('🚨 journey:deviation received');
       setDeviationAlert(true);
     });
 
     socket.on('journey:ended', () => {
+      console.log('🏁 journey ended');
       stopPinging();
       clearJourney();
     });
@@ -73,39 +83,80 @@ export function useWebSocket() {
     });
 
     socketRef.current = socket;
-  }, [accessToken, setConnected, setCurrentLocation, setETA, setDeviationAlert, clearJourney]);
+  }, [
+    accessToken,
+    setConnected,
+    setCurrentLocation,
+    setETA,
+    setDeviationAlert,
+    clearJourney,
+  ]);
 
-  // ── Join a journey room ───────────────────────────────────────────────────────
+  // ---------------- Join ----------------
+
   const joinJourney = useCallback((journeyId: string) => {
+    console.log('📍 Joining room:', journeyId);
     socketRef.current?.emit('journey:join', { journeyId });
   }, []);
 
-  // ── Send a single location ping ───────────────────────────────────────────────
-  const sendPing = useCallback((pingData: {
-    lat: number; lng: number; accuracy?: number;
-    speed?: number | null; heading?: number | null;
-    batteryLevel?: number | null; timestamp?: number;
-  }) => {
-    if (socketRef.current?.connected) {
+  // ---------------- Send Ping ----------------
+
+  const sendPing = useCallback(
+    (pingData: {
+      lat: number;
+      lng: number;
+      accuracy?: number;
+      speed?: number | null;
+      heading?: number | null;
+      batteryLevel?: number | null;
+      timestamp?: number;
+    }) => {
+      if (!socketRef.current?.connected) {
+        console.log('❌ Socket not connected');
+        return;
+      }
+
+      console.log('🚀 socket.emit(location:ping)', pingData);
+
       socketRef.current.emit('location:ping', pingData);
-    }
-  }, []);
+    },
+    []
+  );
 
-  // ── Start auto-pinging every 10 seconds ───────────────────────────────────────
-  const startPinging = useCallback((getPingData: () => {
-    lat: number; lng: number; accuracy?: number;
-    speed?: number | null; heading?: number | null;
-    batteryLevel?: number | null;
-  } | null) => {
-    if (pingTimerRef.current) clearInterval(pingTimerRef.current);
+  // ---------------- Auto Ping ----------------
 
-    pingTimerRef.current = setInterval(() => {
-      const data = getPingData();
-      if (data) sendPing({ ...data, timestamp: Date.now() });
-    }, PING_INTERVAL);
-  }, [sendPing]);
+  const startPinging = useCallback(
+    (
+      getPingData: () => {
+        lat: number;
+        lng: number;
+        accuracy?: number;
+        speed?: number | null;
+        heading?: number | null;
+        batteryLevel?: number | null;
+      } | null
+    ) => {
+      if (pingTimerRef.current) clearInterval(pingTimerRef.current);
 
-  // ── Stop auto-pinging ─────────────────────────────────────────────────────────
+      pingTimerRef.current = setInterval(() => {
+        const data = getPingData();
+
+        if (!data) {
+          console.log('⚠ No GPS data');
+          return;
+        }
+
+        sendPing({
+          ...data,
+          timestamp: Date.now(),
+        });
+      }, PING_INTERVAL);
+    },
+    [sendPing]
+  );
+
+  // ---------------- Stop Ping ----------------
+
   const stopPinging = useCallback(() => {
     if (pingTimerRef.current) {
       clearInterval(pingTimerRef.current);
@@ -113,13 +164,18 @@ export function useWebSocket() {
     }
   }, []);
 
-  // ── End journey via socket ────────────────────────────────────────────────────
-  const endJourneySocket = useCallback((journeyId: string) => {
-    socketRef.current?.emit('journey:end', { journeyId });
-    stopPinging();
-  }, [stopPinging]);
+  // ---------------- End Journey ----------------
 
-  // ── Disconnect ────────────────────────────────────────────────────────────────
+  const endJourneySocket = useCallback(
+    (journeyId: string) => {
+      socketRef.current?.emit('journey:end', { journeyId });
+      stopPinging();
+    },
+    [stopPinging]
+  );
+
+  // ---------------- Disconnect ----------------
+
   const disconnect = useCallback(() => {
     stopPinging();
     socketRef.current?.disconnect();
@@ -127,7 +183,8 @@ export function useWebSocket() {
     setConnected(false);
   }, [stopPinging, setConnected]);
 
-  // ── Cleanup on unmount ────────────────────────────────────────────────────────
+  // ---------------- Cleanup ----------------
+
   useEffect(() => {
     return () => {
       stopPinging();
@@ -135,5 +192,15 @@ export function useWebSocket() {
     };
   }, [stopPinging]);
 
-  return { connect, disconnect, joinJourney, sendPing, startPinging, stopPinging, endJourneySocket };
+  return {
+    connect,
+    disconnect,
+    joinJourney,
+    sendPing,
+    startPinging,
+    stopPinging,
+    endJourneySocket,
+  };
 }
+
+export default useWebSocket;
