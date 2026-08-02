@@ -5,13 +5,13 @@
  * Google Places autocomplete wired if API key is set.
  */
 
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { searchAddress } from '../../services/api/geocode.api';
 import { useNavigate } from 'react-router-dom';
 import { updateProfile } from '../../services/api/user.api';
 import Button from '../../components/common/Button';
 import Input  from '../../components/common/Input';
-
+import type { AddressSuggestion } from '../../services/api/geocode.api';
 
 
 interface AddressState {
@@ -29,8 +29,8 @@ export default function AddressSetup() {
   const [isLoading, setIsLoading] = useState(false);
   const [error,     setError]     = useState('');
   const [locating,  setLocating]  = useState(false);
-  const [homeSuggestions, setHomeSuggestions] = useState([]);
-  const [workSuggestions, setWorkSuggestions] = useState([]);
+const [homeSuggestions, setHomeSuggestions] = useState<AddressSuggestion[]>([]);
+const [workSuggestions, setWorkSuggestions] = useState<AddressSuggestion[]>([]);
   const [searchingHome, setSearchingHome] = useState(false);
   const [searchingWork, setSearchingWork] = useState(false);
 
