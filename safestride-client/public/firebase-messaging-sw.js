@@ -19,13 +19,12 @@
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
-
 firebase.initializeApp({
-  apiKey:'AIzaSyDZbu6S8YARVoBCEExHWEgEog4x9M1YkrU',
-  authDomain: 'safestride-bb54f.firebaseapp.com',
-  projectId: 'safestride-bb54f',
-  messagingSenderId: '202252328915',
-  appId: '1:202252328915:web:ed6603909e52997189d926',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 });
 
 const messaging = firebase.messaging();
