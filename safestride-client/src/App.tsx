@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState, lazy, Suspense } from 'react';
+
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useSearchParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore }  from './store/authStore';
@@ -31,6 +32,8 @@ const RoutePlanner   = lazy(() => import('./pages/route/RoutePlanner'));
 const ContactPortal  = lazy(() => import('./pages/portal/ContactPortal'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const GPSTestPage    = lazy(() => import('./pages/home/GPSTestPage'));
+// with the other lazy imports:
+const AISafety = lazy(() => import('./pages/ai/AISafety'));
 
 const Placeholder = ({ name }: { name: string }) => (
   <div style={{ padding: '2rem', fontFamily: 'Inter, sans-serif' }}>
@@ -135,6 +138,7 @@ export default function App() {
             <Route path="/verify-otp" element={<OTPVerify />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/"                    element={<><ShortcutHandler /><Home /></>} />
+              <Route path="/ai-safety" element={<AISafety />} />
               <Route path="/onboarding/profile"  element={<ProfileSetup />} />
               <Route path="/onboarding/address"  element={<AddressSetup />} />
               <Route path="/onboarding/contacts" element={<ContactsSetup />} />
