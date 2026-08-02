@@ -14,10 +14,10 @@ import type { Coordinates } from '../../store/journeyStore';
 const portalAxios = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1',
   timeout: 15_000,
+  withCredentials: true,
 });
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
-
 interface PortalData {
   contact:       { contactName: string; relationship?: string };
   user:          { name: string; profilePhoto?: string; phone: string };
