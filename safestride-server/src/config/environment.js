@@ -72,7 +72,7 @@ const schema = Joi.object({
  // ── AI Safety Assistant (new, additive, all optional) ─────────────────────
   AI_PROVIDER:        Joi.string().valid('openai', 'gemini', 'claude').default('openai'),
   OPENAI_API_KEY:      Joi.string().optional(),
-  GEMINI_API_KEY:      Joi.string().optional(),
+  GOOGLE_AI_API_KEY: Joi.string().optional(),
   ANTHROPIC_API_KEY:   Joi.string().optional(),
   AI_MODEL:            Joi.string().optional(),
 
@@ -156,7 +156,7 @@ const config = Object.freeze({
     ai: {
     provider:       env.AI_PROVIDER,
     openaiApiKey:    env.OPENAI_API_KEY,
-    geminiApiKey:    env.GEMINI_API_KEY,
+    googleApiKey:   env.GOOGLE_AI_API_KEY,
     anthropicApiKey: env.ANTHROPIC_API_KEY,
     model:          env.AI_MODEL,
   },
