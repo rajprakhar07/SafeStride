@@ -294,7 +294,7 @@ High-level API groups (no internal endpoint details exposed here):
 
 ## 👥 Contributors
 
-- **Prakhar Raj** — Full Stack Developer & Project Owner
+- **Prakhar Raj** — Project Owner
 
 ---
 
