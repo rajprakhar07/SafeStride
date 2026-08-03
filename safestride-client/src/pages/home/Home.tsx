@@ -99,6 +99,12 @@ export default function Home() {
           { icon: '📍', label: 'Safety Map', path: '/community',     bg: '#eef2ff' },
           { icon: '🕐', label: 'History',    path: '/journey/history', bg: '#fff7ed' },
           { icon: '🔒', label: 'Route Check', path: '/route-planner',  bg: '#f5f3ff' },
+          {
+  icon: "🤖",
+  label: "AI Safety",
+  path: "/ai-safety",
+  bg: "#fdf2f8",
+},
         ].map((a) => (
           <button key={a.path} style={styles.quickBtn} onClick={() => navigate(a.path)}>
             <div style={{ ...styles.quickIconBox, background: a.bg }}>{a.icon}</div>
@@ -154,7 +160,7 @@ const styles: Record<string, React.CSSProperties> = {
   ctaText:      { fontSize: '0.95rem', color: '#666', margin: 0, lineHeight: 1.5 },
   ctaBtn:       { marginTop: '0.5rem', padding: '1rem 2rem', background: '#E91E8C', color: '#fff', border: 'none', borderRadius: '16px', fontSize: '1rem', fontWeight: 700, cursor: 'pointer', width: '100%', boxShadow: '0 10px 25px rgba(233,30,140,0.2)' },
   
-  quickActions: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' },
+  quickActions: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' },
   quickBtn:     { background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' },
   quickIconBox: { width: '56px', height: '56px', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', transition: 'transform 0.2s' },
   quickLabel:   { fontSize: '0.75rem', color: '#444', fontWeight: 600 },
