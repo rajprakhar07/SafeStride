@@ -17,7 +17,7 @@ async function generateCompletion({ systemPrompt, userPrompt, jsonMode }) {
     throw new Error('GOOGLE_AI_API_KEY not configured');
   }
 
-  const model = config.ai?.model || 'gemini-2.5-flash';
+  const model = config.ai?.model || 'gemini-flash-latest';
 
   const ai = new GoogleGenAI({
     apiKey,
