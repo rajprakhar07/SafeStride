@@ -2,7 +2,7 @@
 
 # 🛡️ SafeStride
 
-### AI-Powered Personal Safety & Solo Travel Assistance Platform
+### **Not just another maps app. Not just another AI chatbot. SafeStride brings smart safety, real-time awareness, and emergency support together—so you can focus on the journey, not the "what ifs."**
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -237,16 +237,7 @@ Secrets are configured separately per environment — nothing sensitive is commi
 
 ---
 
-## 📸 Screenshots
-/*
-| Home | Dashboard | Journey |
-|---|---|---|
-| _Add screenshot_ | _Add screenshot_ | _Add screenshot_ |
 
-| SOS | AI Assistant | Profile |
-|---|---|---|
-| _Add screenshot_ | _Add screenshot_ | _Add screenshot_ |
-*/
 ---
 
 ## 📡 API Overview
