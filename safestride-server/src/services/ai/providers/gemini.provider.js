@@ -3,48 +3,58 @@
 /**
  * gemini.provider.js
  * Adapter for Google Gemini API.
- * Uniform interface: generateCompletion({ systemPrompt, userPrompt, jsonMode }) -> string
+ * Uniform interface:
+ * generateCompletion({ systemPrompt, userPrompt, jsonMode }) -> string
  */
 
-const axios  = require('axios');
+const { GoogleGenAI } = require('@google/genai');
 const config = require('../../../config/environment');
 
 async function generateCompletion({ systemPrompt, userPrompt, jsonMode }) {
-  const apiKey = config.ai?.geminiApiKey;
-  if (!apiKey) throw new Error('GEMINI_API_KEY not configured');
+  const apiKey = config.ai?.googleAiApiKey;
 
-  const model = config.ai?.model || 'gemini-1.5-flash';
-  const url   = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-console.log('AI Provider:', config.ai?.provider);
-console.log('AI Model:', model);
-console.log('Gemini URL:', url);
+  if (!apiKey) {
+    throw new Error('GOOGLE_AI_API_KEY not configured');
+  }
+
+  const model = config.ai?.model || 'gemini-2.5-flash';
+
+  const ai = new GoogleGenAI({
+    apiKey,
+  });
+
+  console.log('AI Provider:', config.ai?.provider);
+  console.log('AI Model:', model);
+
   try {
-  const { data } = await axios.post(
-    url,
-    {
+    const response = await ai.models.generateContent({
+      model,
       contents: [
         {
-          role: "user",
-          parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }]
-        }
+          role: 'user',
+          parts: [
+            {
+              text: `${systemPrompt}\n\n${userPrompt}`,
+            },
+          ],
+        },
       ],
-      generationConfig: {
+      config: {
         temperature: 0.4,
-        ...(jsonMode ? { responseMimeType: "application/json" } : {}),
+        ...(jsonMode
+          ? {
+              responseMimeType: 'application/json',
+            }
+          : {}),
       },
-    },
-    { timeout: 8000 }
-  );
+    });
 
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    return response.text || '';
 
-} catch (err) {
-  console.log("STATUS:", err.response?.status);
-  console.log("DATA:", err.response?.data);
-  throw err;
-}
-
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  } catch (err) {
+    console.log('Gemini Error:', err.message);
+    throw err;
+  }
 }
 
 module.exports = { generateCompletion };

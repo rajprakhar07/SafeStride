@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev":  "nodemon",
+    "dev": "nodemon",
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --runInBand",
@@ -13,6 +13,7 @@
     "lint:fix": "eslint src/ --ext .js --fix"
   },
   "dependencies": {
+    "@google/genai": "^2.15.0",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
     "bull": "^4.12.0",
