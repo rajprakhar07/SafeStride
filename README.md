@@ -167,7 +167,7 @@ npm run dev
 
 ## 🔑 Environment Variables
 
-> ⚠️ Use placeholders only — never commit real API keys or secrets.
+
 
 **Frontend (`safestride-client/.env.example`)**
 ```env
@@ -238,7 +238,7 @@ Secrets are configured separately per environment — nothing sensitive is commi
 ---
 
 ## 📸 Screenshots
-
+/*
 | Home | Dashboard | Journey |
 |---|---|---|
 | _Add screenshot_ | _Add screenshot_ | _Add screenshot_ |
@@ -246,7 +246,7 @@ Secrets are configured separately per environment — nothing sensitive is commi
 | SOS | AI Assistant | Profile |
 |---|---|---|
 | _Add screenshot_ | _Add screenshot_ | _Add screenshot_ |
-
+*/
 ---
 
 ## 📡 API Overview
@@ -301,7 +301,7 @@ High-level API groups (no internal endpoint details exposed here):
 
 ## 👥 Contributors
 
-- **[Your Name]** — Full Stack Developer & Project Owner
+- **Prakhar Raj** — Full Stack Developer & Project Owner
 
 ---
 
