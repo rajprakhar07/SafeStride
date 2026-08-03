@@ -156,7 +156,7 @@ const config = Object.freeze({
     ai: {
     provider:       env.AI_PROVIDER,
     openaiApiKey:    env.OPENAI_API_KEY,
-    googleApiKey:   env.GOOGLE_AI_API_KEY,
+    googleAiApiKey: env.GOOGLE_AI_API_KEY,
     anthropicApiKey: env.ANTHROPIC_API_KEY,
     model:          env.AI_MODEL,
   },
