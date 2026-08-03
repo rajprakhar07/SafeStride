@@ -2,7 +2,7 @@
 
 # 🛡️ SafeStride
 
-### **Not just another maps app. Not just another AI chatbot. SafeStride brings smart safety, real-time awareness, and emergency support together—so you can focus on the journey, not the "what ifs."**
+### 
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -12,7 +12,7 @@
 [![Deployed](https://img.shields.io/badge/Frontend-Vercel-black?logo=vercel)](https://vercel.com/)
 [![Deployed](https://img.shields.io/badge/Backend-Render-46E3B7?logo=render&logoColor=white)](https://render.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](#-license)
-
+**Not just another maps app. Not just another AI chatbot. SafeStride brings smart safety, real-time awareness, and emergency support together—so you can focus on the journey, not the "what ifs."**
 **SafeStride helps people travel solo with more confidence** — combining journey management, an AI safety assistant, emergency tools, and real-time infrastructure into one platform.
 
 </div>
