@@ -254,15 +254,6 @@ High-level API groups (no internal endpoint details exposed here):
 
 ---
 
-## 🧩 Challenges Faced
-
-- Handling Gemini model migrations and version changes
-- Managing API quota limits gracefully
-- Environment configuration across local, Vercel, and Render
-- Resolving CORS issues between frontend and backend
-- Cleaning up secrets accidentally exposed in early commits
-- Structuring a reliable JWT authentication flow
-- Designing scalable route/module organization
 
 ---
 
