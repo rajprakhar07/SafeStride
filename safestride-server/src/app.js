@@ -14,6 +14,7 @@ const config       = require('./config/environment');
 const { notFoundHandler, errorHandler } = require('./middleware/error.middleware');
 
 const app = express();
+app.disable('x-powered-by');
 
 // ─── Security middleware ──────────────────────────────────────────────────────
 app.use(helmet());

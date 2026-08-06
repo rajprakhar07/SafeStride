@@ -56,11 +56,18 @@ module.exports = function registerJourneySocket(journeyNS) {
     }
 
     const { lat, lng, accuracy, speed, heading, batteryLevel, timestamp } = pingData;
-
-    if (lat === undefined || lng === undefined) {
-      console.log("❌ Invalid coordinates");
-      return socket.emit('error', { message: 'lat and lng are required' });
-    }
+    if (
+  typeof lat !== 'number' ||
+  typeof lng !== 'number' ||
+  lat < -90 ||
+  lat > 90 ||
+  lng < -180 ||
+  lng > 180
+) {
+  return socket.emit('error', {
+    message: 'Invalid coordinates'
+  });
+}
 
   
    // 1. Fetch journey for ETA + deviation check
