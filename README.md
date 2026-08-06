@@ -1,4 +1,4 @@
-<div align="center">
+/*  <div align="center">
 
 # 🛡️ SafeStride
 
@@ -167,36 +167,9 @@ npm run dev
 
 ---
 
-## 🔑 Environment Variables
 
 
 
-**Frontend (`safestride-client/.env.example`)**
-```env
-VITE_API_BASE_URL=your_backend_api_url
-VITE_GOOGLE_MAPS_API_KEY=your_google_maps_key
-VITE_FIREBASE_API_KEY=your_firebase_key
-```
-
-**Backend (`safestride-server/.env.example`)**
-```env
-PORT=5000
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-REDIS_URL=your_redis_connection_string
-GEMINI_API_KEY=your_gemini_api_key
-FIREBASE_SERVER_KEY=your_firebase_server_key
-```
-
-| Variable | Description |
-|---|---|
-| `VITE_API_BASE_URL` | Base URL of the backend REST API |
-| `VITE_GOOGLE_MAPS_API_KEY` | Client-side Google Maps key |
-| `MONGODB_URI` | MongoDB connection string |
-| `JWT_SECRET` | Secret used to sign JWT tokens |
-| `REDIS_URL` | Redis connection string |
-| `GEMINI_API_KEY` | Server-only key for Google Gemini API |
-| `FIREBASE_SERVER_KEY` | Server key for push notifications |
 
 ---
 
@@ -215,7 +188,6 @@ FIREBASE_SERVER_KEY=your_firebase_server_key
 | Frontend | **Vercel** | Auto-deploys from main branch |
 | Backend | **Render** | Environment variables configured in dashboard |
 
-Secrets are configured separately per environment — nothing sensitive is committed to GitHub.
 
 ---
 
@@ -257,13 +229,6 @@ High-level API groups (no internal endpoint details exposed here):
 
 ---
 
-## 📚 Lessons Learned
-
-- Importance of abstracting third-party AI providers for flexibility
-- Value of environment-based configuration from day one
-- Practical experience with secret scanning and Git hygiene
-- Real-world deployment coordination across two platforms
-- Building resilient error handling around external APIs
 
 ---
 
@@ -304,6 +269,6 @@ This project is licensed under the **MIT License**.
 
 <div align="center">
 
-**Built with ❤️ to make solo travel safer.**
+**Built with ❤️ to make solo travel safer.**    */
 
 </div>
