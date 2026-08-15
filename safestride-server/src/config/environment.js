@@ -66,8 +66,7 @@ const schema = Joi.object({
 
   // ── AI Microservice (required in F-22) ────────────────────────────────────
   AI_SERVICE_URL: Joi.string().uri().default('http://localhost:8000'),
-   // ── AI Microservice (required in F-22) ────────────────────────────────────
-   AI_SERVICE_URL: Joi.string().uri().default('http://localhost:8000'),
+   
  
  // ── AI Safety Assistant (new, additive, all optional) ─────────────────────
   AI_PROVIDER:        Joi.string().valid('openai', 'gemini', 'claude').default('openai'),
