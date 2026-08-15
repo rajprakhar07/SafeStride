@@ -215,9 +215,9 @@ export default function RoutePlanner() {
   }
 
   const percentage = Math.min(
-    100,
-    Math.max(0, (f.score / f.max) * 100)
-  );
+  100,
+  Math.max(0, ((f.score ?? 0) / (f.max ?? 1)) * 100)
+);
 
   return (
     <div key={i} style={styles.factorRow}>
@@ -242,8 +242,8 @@ export default function RoutePlanner() {
       </div>
 
       <span style={styles.factorScore}>
-        {Math.round(f.score)}/{f.max}
-      </span>
+  {Math.round(f.score ?? 0)}/{f.max ?? 0}
+</span>
     </div>
   );
 })}
