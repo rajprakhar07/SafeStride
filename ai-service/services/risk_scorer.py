@@ -191,51 +191,78 @@ def score_route(req: RouteScoreRequest) -> RouteScoreResponse:
     if req.hour_of_day in {22, 23, 0, 1, 2, 3, 4, 5}:
         factors.append({
             "factor": "Late-night travel",
+            "score": 30,
+            "max": 30,
             "description": f"Travel time is {req.hour_of_day:02d}:00",
         })
     elif req.hour_of_day in {18, 19, 20, 21}:
         factors.append({
             "factor": "Evening travel",
+            "score": 15,
+            "max": 15,
             "description": f"Travel time is {req.hour_of_day:02d}:00",
         })
 
-    # Danger spots
+    # Community danger spots
     if req.danger_spot_count > 0:
+        danger_score = min(req.danger_spot_count * 6, 25)
         factors.append({
             "factor": "Community danger spots",
+            "score": round(danger_score, 1),
+            "max": 25,
             "description": (
                 f"{req.danger_spot_count} reported danger spot(s) "
                 "near the route"
             ),
         })
 
-    # Lighting
+    # Poor lighting
+    lighting_score = (1 - req.lighting_score) * 15
     if req.lighting_score < 0.4:
         factors.append({
             "factor": "Poor lighting",
+            "score": round(lighting_score, 1),
+            "max": 15,
             "description": "Route area has relatively low lighting",
         })
 
-    # Crowd
+    # Low pedestrian activity
+    crowd_score = (1 - req.crowd_density) * 10
     if req.crowd_density < 0.3:
         factors.append({
             "factor": "Low pedestrian activity",
+            "score": round(crowd_score, 1),
+            "max": 10,
             "description": "Expected pedestrian activity is low",
         })
 
     # Historical incidents
+    historical_score = req.historical_incident_density * 30
     if req.historical_incident_density > 0.6:
         factors.append({
             "factor": "Historical incident density",
+            "score": round(historical_score, 1),
+            "max": 30,
             "description": "Area has elevated historical incident density",
+        })
+
+    # Route length
+    route_score = min(req.route_length_meters / 1000 * 1.5, 10)
+    if route_score > 0:
+        factors.append({
+            "factor": "Long route",
+            "score": round(route_score, 1),
+            "max": 10,
+            "description": "Longer routes can increase exposure time",
         })
 
     if not factors:
         factors.append({
             "factor": "No significant risk factors",
+            "score": 0,
+            "max": 1,
             "description": "No major risk indicators detected",
         })
-
     recommendation = get_recommendation(level)
 
     if is_fallback:
