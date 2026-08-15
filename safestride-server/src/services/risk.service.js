@@ -98,6 +98,17 @@ async function scoreRoute({ origin, destination, transportMode, routeLengthMeter
   const aiUrl = config.aiService?.url || 'http://localhost:8000';
 
   try {
+    console.log('🔍 AI REQUEST:', JSON.stringify({
+  origin_lat: origin.lat,
+  origin_lng: origin.lng,
+  dest_lat: destination.lat,
+  dest_lng: destination.lng,
+  hour_of_day: hour,
+  day_of_week: dayOfWeek,
+  transport_mode: transportMode,
+  route_length_meters: routeLength,
+  danger_spot_count: dangerSpotCount,
+}, null, 2));
     const { data } = await axios.post(`${aiUrl}/risk/score-route`, {
   origin_lat:          origin.lat,
   origin_lng:          origin.lng,
