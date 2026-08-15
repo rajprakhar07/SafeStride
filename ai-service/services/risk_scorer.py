@@ -191,26 +191,18 @@ def score_route(req: RouteScoreRequest) -> RouteScoreResponse:
     if req.hour_of_day in {22, 23, 0, 1, 2, 3, 4, 5}:
         factors.append({
             "factor": "Late-night travel",
-            "score": 40,
-            "max": 40,
             "description": f"Travel time is {req.hour_of_day:02d}:00",
         })
     elif req.hour_of_day in {18, 19, 20, 21}:
         factors.append({
             "factor": "Evening travel",
-            "score": 20,
-            "max": 40,
             "description": f"Travel time is {req.hour_of_day:02d}:00",
         })
 
-    # Community danger spots
+    # Danger spots
     if req.danger_spot_count > 0:
-        spots_score = min(req.danger_spot_count * 8, 25)
-
         factors.append({
             "factor": "Community danger spots",
-            "score": spots_score,
-            "max": 25,
             "description": (
                 f"{req.danger_spot_count} reported danger spot(s) "
                 "near the route"
@@ -219,42 +211,28 @@ def score_route(req: RouteScoreRequest) -> RouteScoreResponse:
 
     # Lighting
     if req.lighting_score < 0.4:
-        lighting_score = round((1 - req.lighting_score) * 10, 1)
-
         factors.append({
             "factor": "Poor lighting",
-            "score": lighting_score,
-            "max": 10,
             "description": "Route area has relatively low lighting",
         })
 
     # Crowd
     if req.crowd_density < 0.3:
-        crowd_score = round((1 - req.crowd_density) * 10, 1)
-
         factors.append({
             "factor": "Low pedestrian activity",
-            "score": crowd_score,
-            "max": 10,
             "description": "Expected pedestrian activity is low",
         })
 
     # Historical incidents
     if req.historical_incident_density > 0.6:
-        incident_score = round(req.historical_incident_density * 15, 1)
-
         factors.append({
             "factor": "Historical incident density",
-            "score": incident_score,
-            "max": 15,
             "description": "Area has elevated historical incident density",
         })
 
     if not factors:
         factors.append({
             "factor": "No significant risk factors",
-            "score": 0,
-            "max": 1,
             "description": "No major risk indicators detected",
         })
 
