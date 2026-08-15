@@ -99,17 +99,18 @@ async function scoreRoute({ origin, destination, transportMode, routeLengthMeter
 
   try {
     const { data } = await axios.post(`${aiUrl}/risk/score-route`, {
-      origin_lat:          origin.lat,
-      origin_lng:          origin.lng,
-      dest_lat:            destination.lat,
-      dest_lng:            destination.lng,
-      hour_of_day:         hour,
-      day_of_week:         dayOfWeek,
-      transport_mode:      transportMode,
-      route_length_meters: routeLength,
-      danger_spot_count:   dangerSpotCount,
-    }, { timeout: 5000 });
+  origin_lat:          origin.lat,
+  origin_lng:          origin.lng,
+  dest_lat:            destination.lat,
+  dest_lng:            destination.lng,
+  hour_of_day:         hour,
+  day_of_week:         dayOfWeek,
+  transport_mode:      transportMode,
+  route_length_meters: routeLength,
+  danger_spot_count:   dangerSpotCount,
+}, { timeout: 5000 });
 
+console.log('🔍 AI RESPONSE:', JSON.stringify(data, null, 2));
     const result = {
       riskScore:      data.risk_score,
       riskLevel:      data.risk_level,
