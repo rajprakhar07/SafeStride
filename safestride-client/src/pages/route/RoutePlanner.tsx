@@ -197,22 +197,56 @@ export default function RoutePlanner() {
             </div>
           )}
           <div style={styles.factorsTitle}>Risk Analysis Breakdown</div>
-          {result.factors.map((f, i) => (
-            <div key={i} style={styles.factorRow}>
-              <div style={styles.factorInfo}>
-                <span style={styles.factorName}>{f.factor}</span>
-                <span style={styles.factorDesc}>{f.description}</span>
-              </div>
-              <div style={styles.factorBarWrap}>
-                <div style={{
-                  ...styles.factorBar,
-                  width:      `${(f.score / f.max) * 100}%`,
-                  background: f.score / f.max > 0.6 ? '#EF4444' : f.score / f.max > 0.3 ? '#F59E0B' : '#22C55E',
-                }} />
-              </div>
-              <span style={styles.factorScore}>{Math.round(f.score)}/{f.max}</span>
-            </div>
-          ))}
+         {result.factors.map((f, i) => {
+  const hasScore =
+    typeof f.score === 'number' &&
+    typeof f.max === 'number' &&
+    f.max > 0;
+
+  if (!hasScore) {
+    return (
+      <div key={i} style={styles.factorRow}>
+        <div style={styles.factorInfo}>
+          <span style={styles.factorName}>{f.factor}</span>
+          <span style={styles.factorDesc}>{f.description}</span>
+        </div>
+      </div>
+    );
+  }
+
+  const percentage = Math.min(
+    100,
+    Math.max(0, (f.score / f.max) * 100)
+  );
+
+  return (
+    <div key={i} style={styles.factorRow}>
+      <div style={styles.factorInfo}>
+        <span style={styles.factorName}>{f.factor}</span>
+        <span style={styles.factorDesc}>{f.description}</span>
+      </div>
+
+      <div style={styles.factorBarWrap}>
+        <div
+          style={{
+            ...styles.factorBar,
+            width: `${percentage}%`,
+            background:
+              percentage > 60
+                ? '#EF4444'
+                : percentage > 30
+                  ? '#F59E0B'
+                  : '#22C55E',
+          }}
+        />
+      </div>
+
+      <span style={styles.factorScore}>
+        {Math.round(f.score)}/{f.max}
+      </span>
+    </div>
+  );
+})}
           <Button fullWidth onClick={() => navigate('/journey/start')} style={{ marginTop: '1rem' }}>
             Start Journey Now →
           </Button>

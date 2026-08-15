@@ -6,8 +6,8 @@ import apiClient from './client';
 
 export interface RiskFactor {
   factor:      string;
-  score:       number;
-  max:         number;
+  score?:      number;
+  max?:         number;
   description: string;
 }
 
