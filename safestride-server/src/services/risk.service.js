@@ -70,8 +70,14 @@ async function scoreRoute({ origin, destination, transportMode, routeLengthMeter
 
   // Check Redis cache first
   const redis = getRedisClient();
-  const key   = cacheKey(origin.lat, origin.lng, destination.lat, destination.lng, transportMode, hour);
-
+  const key = `v2:${cacheKey(
+  origin.lat,
+  origin.lng,
+  destination.lat,
+  destination.lng,
+  transportMode,
+  hour
+)}`;
   try {
     const cached = await redis.get(key);
     if (cached) {
