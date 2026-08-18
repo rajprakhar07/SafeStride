@@ -5,18 +5,28 @@
 import apiClient from './client';
 
 export interface RiskFactor {
-  factor:      string;
-  score?:      number;
-  max?:         number;
+  factor: string;
+  score?: number;
+  max?: number;
   description: string;
+  severity?: 'low' | 'moderate' | 'high' | 'info';
+  value?: number;
+  unit?: string;
+  impact?: string;
+  recommendation?: string;
 }
-
 export interface RouteRiskScore {
   riskScore:      number;
   riskLevel:      'safe' | 'moderate' | 'high';
   factors:        RiskFactor[];
   recommendation: string;
   dangerSpotCount: number;
+
+  route?: {
+    distanceMeters: number;
+    polyline: string | null;
+    source: string;
+  };
 }
 
 export interface DangerSpot {

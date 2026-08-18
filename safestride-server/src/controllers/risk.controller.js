@@ -10,6 +10,7 @@
  */
 
 const riskService = require('../services/risk.service');
+const journeyService = require('../services/journey.service');
 const DangerSpot  = require('../models/DangerSpot');
 const R           = require('../utils/response.utils');
 
@@ -23,18 +24,60 @@ async function scoreRoute(req, res, next) {
       routeLengthMeters,
     } = req.body;
 
-    if (!origin?.lat || !origin?.lng || !destination?.lat || !destination?.lng) {
-      return R.badRequest(res, 'origin and destination coordinates are required');
+    if (
+      !origin ||
+      typeof origin.lat !== 'number' ||
+      typeof origin.lng !== 'number' ||
+      !destination ||
+      typeof destination.lat !== 'number' ||
+      typeof destination.lng !== 'number'
+    ) {
+      return R.badRequest(
+        res,
+        'origin and destination coordinates are required'
+      );
     }
 
+    // 1. Get the actual road route from ORS
+    const route = await journeyService.fetchRoute(
+      origin,
+      destination,
+      transportMode
+    );
+
+    console.log('🛣️ ROUTE RESULT:', {
+      distanceMeters: route.distanceMeters,
+      hasPolyline: !!route.polyline,
+    });
+
+    // 2. Use explicitly supplied distance if available,
+    //    otherwise use the actual ORS distance.
+    const actualRouteLength =
+      typeof routeLengthMeters === 'number'
+        ? routeLengthMeters
+        : route.distanceMeters;
+
+    // 3. Send the actual route distance into the AI risk scorer
     const result = await riskService.scoreRoute({
       origin,
       destination,
       transportMode,
-      routeLengthMeters,
+      routeLengthMeters: actualRouteLength,
     });
 
-    return R.ok(res, result, 'Route scored successfully');
+    // 4. Return both route + detailed risk analysis
+    return R.ok(
+      res,
+      {
+        ...result,
+        route: {
+          distanceMeters: route.distanceMeters,
+          polyline: route.polyline,
+          source: route.polyline ? 'openrouteservice' : 'straight-line-fallback',
+        },
+      },
+      'Route scored successfully'
+    );
   } catch (err) {
     next(err);
   }

@@ -169,8 +169,9 @@ def score_route(req: RouteScoreRequest) -> RouteScoreResponse:
     """
     Score a route using the trained ML model.
 
-    If the ML model is unavailable, automatically falls back
-    to the rule-based scoring system.
+    The ML model determines the final risk score.
+    The factor breakdown explains the environmental/contextual
+    conditions that contributed to the route assessment.
     """
 
     is_fallback = False
@@ -187,86 +188,249 @@ def score_route(req: RouteScoreRequest) -> RouteScoreResponse:
 
     factors = []
 
-    # Time factor
+    # ─────────────────────────────────────────────────────────────
+    # 1. TIME OF DAY
+    # ─────────────────────────────────────────────────────────────
+
     if req.hour_of_day in {22, 23, 0, 1, 2, 3, 4, 5}:
         factors.append({
             "factor": "Late-night travel",
             "score": 30,
             "max": 30,
-            "description": f"Travel time is {req.hour_of_day:02d}:00",
+            "description": (
+                f"Travel is planned at {req.hour_of_day:02d}:00, "
+                "when late-night conditions may increase risk."
+            ),
+            "severity": "high",
         })
+
     elif req.hour_of_day in {18, 19, 20, 21}:
         factors.append({
             "factor": "Evening travel",
             "score": 15,
             "max": 15,
-            "description": f"Travel time is {req.hour_of_day:02d}:00",
+            "description": (
+                f"Travel is planned at {req.hour_of_day:02d}:00. "
+                "Visibility and pedestrian activity may be lower."
+            ),
+            "severity": "moderate",
         })
 
-    # Community danger spots
+    else:
+        factors.append({
+            "factor": "Daytime travel",
+            "score": 0,
+            "max": 30,
+            "description": (
+                f"Travel is planned at {req.hour_of_day:02d}:00, "
+                "which is generally a lower-risk travel period."
+            ),
+            "severity": "low",
+        })
+
+    # ─────────────────────────────────────────────────────────────
+    # 2. COMMUNITY DANGER SPOTS
+    # ─────────────────────────────────────────────────────────────
+
+    danger_score = min(req.danger_spot_count * 6, 25)
+
     if req.danger_spot_count > 0:
-        danger_score = min(req.danger_spot_count * 6, 25)
+        danger_severity = (
+            "high" if req.danger_spot_count >= 4
+            else "moderate"
+        )
+
         factors.append({
             "factor": "Community danger spots",
             "score": round(danger_score, 1),
             "max": 25,
             "description": (
                 f"{req.danger_spot_count} reported danger spot(s) "
-                "near the route"
+                "were detected near the route."
             ),
+            "severity": danger_severity,
         })
 
-    # Poor lighting
-    lighting_score = (1 - req.lighting_score) * 15
-    if req.lighting_score < 0.4:
+    else:
         factors.append({
-            "factor": "Poor lighting",
-            "score": round(lighting_score, 1),
-            "max": 15,
-            "description": "Route area has relatively low lighting",
-        })
-
-    # Low pedestrian activity
-    crowd_score = (1 - req.crowd_density) * 10
-    if req.crowd_density < 0.3:
-        factors.append({
-            "factor": "Low pedestrian activity",
-            "score": round(crowd_score, 1),
-            "max": 10,
-            "description": "Expected pedestrian activity is low",
-        })
-
-    # Historical incidents
-    historical_score = req.historical_incident_density * 30
-    if req.historical_incident_density > 0.6:
-        factors.append({
-            "factor": "Historical incident density",
-            "score": round(historical_score, 1),
-            "max": 30,
-            "description": "Area has elevated historical incident density",
-        })
-
-    # Route length
-    route_score = min(req.route_length_meters / 1000 * 1.5, 10)
-    if route_score > 0:
-        factors.append({
-            "factor": "Long route",
-            "score": round(route_score, 1),
-            "max": 10,
-            "description": "Longer routes can increase exposure time",
-        })
-
-    if not factors:
-        factors.append({
-            "factor": "No significant risk factors",
+            "factor": "Community danger spots",
             "score": 0,
-            "max": 1,
-            "description": "No major risk indicators detected",
+            "max": 25,
+            "description": (
+                "No active community-reported danger spots "
+                "were detected near the route."
+            ),
+            "severity": "low",
         })
+
+    # ─────────────────────────────────────────────────────────────
+    # 3. LIGHTING
+    # ─────────────────────────────────────────────────────────────
+
+    lighting_risk = round((1 - req.lighting_score) * 15, 1)
+
+    if req.lighting_score < 0.4:
+        lighting_severity = "high"
+    elif req.lighting_score < 0.7:
+        lighting_severity = "moderate"
+    else:
+        lighting_severity = "low"
+
+    factors.append({
+        "factor": "Lighting conditions",
+        "score": lighting_risk,
+        "max": 15,
+        "description": (
+            f"Lighting safety estimate: "
+            f"{round(req.lighting_score * 100)}%."
+        ),
+        "severity": lighting_severity,
+    })
+
+    # ─────────────────────────────────────────────────────────────
+    # 4. PEDESTRIAN / CROWD ACTIVITY
+    # ─────────────────────────────────────────────────────────────
+
+    crowd_risk = round((1 - req.crowd_density) * 10, 1)
+
+    if req.crowd_density < 0.3:
+        crowd_severity = "high"
+        crowd_description = (
+            "Expected pedestrian activity is low, "
+            "which may reduce natural surveillance."
+        )
+    elif req.crowd_density < 0.7:
+        crowd_severity = "moderate"
+        crowd_description = (
+            "Expected pedestrian activity is moderate."
+        )
+    else:
+        crowd_severity = "low"
+        crowd_description = (
+            "Expected pedestrian activity is relatively high."
+        )
+
+    factors.append({
+        "factor": "Pedestrian activity",
+        "score": crowd_risk,
+        "max": 10,
+        "description": crowd_description,
+        "severity": crowd_severity,
+    })
+
+    # ─────────────────────────────────────────────────────────────
+    # 5. HISTORICAL INCIDENTS
+    # ─────────────────────────────────────────────────────────────
+
+    historical_risk = round(
+        req.historical_incident_density * 30,
+        1
+    )
+
+    if req.historical_incident_density > 0.6:
+        historical_severity = "high"
+        historical_description = (
+            "The surrounding area has elevated "
+            "historical incident density."
+        )
+    elif req.historical_incident_density > 0.3:
+        historical_severity = "moderate"
+        historical_description = (
+            "The surrounding area has moderate "
+            "historical incident density."
+        )
+    else:
+        historical_severity = "low"
+        historical_description = (
+            "No elevated historical incident density "
+            "was detected in the available data."
+        )
+
+    factors.append({
+        "factor": "Historical incident risk",
+        "score": historical_risk,
+        "max": 30,
+        "description": historical_description,
+        "severity": historical_severity,
+    })
+
+    # ─────────────────────────────────────────────────────────────
+    # 6. ROUTE LENGTH
+    # ─────────────────────────────────────────────────────────────
+
+    route_risk = min(
+        req.route_length_meters / 1000 * 1.5,
+        10
+    )
+
+    route_km = req.route_length_meters / 1000
+
+    if route_km >= 10:
+        route_severity = "high"
+    elif route_km >= 5:
+        route_severity = "moderate"
+    else:
+        route_severity = "low"
+
+    factors.append({
+    "factor": "Long route",
+    "score": round(route_risk, 1),
+    "max": 10,
+    "severity": (
+        "high"
+        if req.route_length_meters >= 15000
+        else "medium"
+        if req.route_length_meters >= 7000
+        else "low"
+    ),
+    "value": round(req.route_length_meters / 1000, 1),
+    "unit": "km",
+    "description": (
+        "Longer routes can increase total exposure time "
+        "and the number of areas encountered."
+    ),
+    "impact": (
+        f"The planned route is approximately "
+        f"{req.route_length_meters / 1000:.1f} km."
+    ),
+    "recommendation": (
+        "If a similarly safe shorter route is available, "
+        "consider using it."
+    ),
+})
+
+    # ─────────────────────────────────────────────────────────────
+    # 7. TRANSPORT MODE
+    # ─────────────────────────────────────────────────────────────
+
+    mode_labels = {
+        "walking": "Walking",
+        "auto": "Auto",
+        "cab": "Cab",
+        "bus": "Bus",
+        "mixed": "Mixed transport",
+    }
+
+    factors.append({
+        "factor": "Travel mode",
+        "score": 0,
+        "max": 1,
+        "description": (
+            f"Route evaluated using {mode_labels.get(req.transport_mode, req.transport_mode)}."
+        ),
+        "severity": "info",
+    })
+
+    # ─────────────────────────────────────────────────────────────
+    # FINAL FALLBACK MESSAGE
+    # ─────────────────────────────────────────────────────────────
+
     recommendation = get_recommendation(level)
 
     if is_fallback:
-        recommendation += " ML model unavailable; fallback scoring was used."
+        recommendation += (
+            " ML model unavailable; fallback scoring was used."
+        )
 
     return RouteScoreResponse(
         risk_score=final_score,
@@ -274,3 +438,4 @@ def score_route(req: RouteScoreRequest) -> RouteScoreResponse:
         factors=factors,
         recommendation=recommendation,
     )
+
